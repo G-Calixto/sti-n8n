@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>STI MVP</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <section id="step1" class="card">
+      <h1>STI MVP</h1>
+      <p class="subtitle">Leia o termo de consentimento e aceite para continuar.</p>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+        <button id="openTermBtn" type="button">Ver termo</button>
+        <label class="checkbox-row" style="margin:0;">
+          <input id="consentAccepted" type="checkbox" />
+          <span>Li e concordo com o termo de consentimento.</span>
+        </label>
+      </div>
+
+      <button id="continueButton">Continuar</button>
+    </section>
+
+    <section id="step2" class="card hidden">
+      <h2>Enviar questão</h2>
+      <p class="subtitle">Preencha apenas o necessário para iniciar o fluxo do n8n.</p>
+
+      <form id="submissionForm">
+        <label for="correctAnswer">Resposta correta</label>
+        <input id="correctAnswer" name="correctAnswer" type="text" placeholder="Ex.: 35" required />
+
+        <label for="image">Imagem da questão</label>
+        <input id="image" name="image" type="file" accept="image/*" required />
+
+        <button type="submit">Enviar</button>
+      </form>
+
+      <p id="statusMessage" class="status"></p>
+    </section>
+  </main>
+
+  <!-- Consent Modal -->
+  <div id="consentModal" class="modal-overlay hidden-modal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h3 id="modalTitle">Termo de Consentimento</h3>
+      <div class="modal-body" id="consentContent">Carregando termo...</div>
+      <div class="modal-footer">
+        <button id="agreeModalBtn" type="button">Concordo e fechar</button>
+        <button id="closeModalBtn" type="button" class="close-btn">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
