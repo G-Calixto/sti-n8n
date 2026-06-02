@@ -1,18 +1,49 @@
 # Arquitetura
 
-Fluxo geral do sistema (MVP):
+## Visao geral
 
-frontend → backend → n8n → Gemini → n8n → backend → frontend
+O projeto esta organizado em duas aplicacoes:
 
-Descrição resumida:
+- `apps/frontend`: React com Vite.
+- `apps/backend`: Node.js com Express.
 
-- O professor usa o frontend para enviar uma imagem da questão e a resposta correta.
-- O frontend faz um POST para o `backend` com a imagem e metadados.
-- O `backend` encaminha a imagem para um webhook do `n8n` responsável por extrair os dados da imagem (usando IA generativa, ex.: Gemini).
-- O `n8n` orquestra chamadas ao provedor de IA e processa a extração (resposta do aluno, metadados).
-- Após extrair a resposta, o `backend` realiza uma validação simples (comparação exata neste MVP) e solicita ao `n8n` um feedback gerado pela IA.
-- O `n8n` retorna o feedback ao `backend`, que repassa o resultado ao frontend.
+O n8n fica fora do frontend e e chamado exclusivamente pelo backend.
 
-Notas:
-- Nesta versão, as comunicações entre `backend` e `n8n` são realizadas via webhooks HTTP.
-- Não são armazenados dados sensíveis no repositório. Configurações (URLs e chaves) devem ficar em variáveis de ambiente.
+## Fluxo de extracao
+
+```text
+Frontend
+  -> Backend: POST /api/submissions/extract
+  -> n8n Workflow Extracao - STI
+  -> Gemini
+  -> n8n Respond to Webhook
+  -> Backend
+  -> Frontend
+```
+
+O backend recebe a imagem em `multipart/form-data`, valida o envio, gera `submissionId`, envia o arquivo ao n8n e guarda em memoria a extracao retornada.
+
+## Fluxo de feedback
+
+```text
+Frontend
+  -> Backend: POST /api/submissions/:id/feedback
+  -> n8n Workflow Feedback
+  -> Gemini
+  -> n8n Respond to Webhook
+  -> Backend
+  -> Frontend
+```
+
+O backend busca a submissao na memoria, monta o payload com `submission_id`, `correct_answer` e `extracao`, chama o workflow de feedback e retorna a avaliacao pedagogica.
+
+## Persistencia
+
+Nao ha banco de dados neste MVP. As submisssoes ficam em memoria no backend. Se o processo reiniciar, e necessario enviar a imagem novamente.
+
+## Seguranca de integracao
+
+- O frontend fala apenas com o backend.
+- Webhooks do n8n ficam em variaveis de ambiente do backend.
+- Chaves Gemini ficam no n8n, nao no frontend.
+- Imagens nao sao salvas permanentemente.

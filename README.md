@@ -1,93 +1,125 @@
-**sti-feedback-mvp**
+# STI com n8n
 
-Descrição curta
-----------------
+MVP academico de um Sistema Tutor Inteligente para matematica do Ensino Fundamental 1.
 
-MVP de um Sistema Tutor Inteligente (STI) para o Ensino Fundamental 1. Permite que um professor envie uma imagem de uma questão resolvida por um aluno e a resposta correta; o backend envia esses dados para um webhook do n8n que orquestra análises com IA (ex.: Gemini) e retorna feedback.
+O sistema permite que um professor aceite um termo LGPD simplificado, informe seu nome, envie uma imagem da questao resolvida pelo aluno e informe a resposta correta. O backend chama workflows do n8n que usam Gemini para extracao da imagem e geracao de feedback pedagogico.
 
-Objetivo acadêmico
--------------------
+## Fluxo
 
-Provar a viabilidade de um fluxo simples de extração e feedback automatizado usando n8n e um provedor de IA. Projeto pensado como protótipo/MVP para experimentação.
+1. `Frontend -> Backend -> n8n Extracao -> Gemini -> n8n -> Backend -> Frontend`
+2. `Frontend -> Backend -> n8n Feedback -> Gemini -> n8n -> Backend -> Frontend`
 
-Arquitetura geral
------------------
+O frontend nunca chama o n8n diretamente. Webhooks e chaves devem ficar apenas no backend/n8n.
 
-frontend → backend → n8n → Gemini → n8n → backend → frontend
+## Estrutura
 
-Tecnologias utilizadas
-----------------------
-
-- Frontend: HTML/CSS/JS (simples, estático)
-- Backend: Node.js + Express
-- Orquestração: n8n (webhooks)
-- IA: provedor externo (ex.: Gemini) via n8n
-
-Estrutura de pastas
--------------------
-
-```
-sti-feedback-mvp/
-├── frontend/
-│   ├── index.html
-│   ├── script.js
-│   └── styles.css
-├── backend/
-│   ├── server.js
-│   ├── services/
-│   └── package.json
-├── docs/
-│   ├── arquitetura.md
-│   └── contratos.md
-├── .gitignore
-├── .env.example
-└── README.md
+```text
+sti-com-n8n/
++-- apps/
+|   +-- frontend/
+|   +-- backend/
++-- n8n/
+|   +-- workflows/
+|   +-- docs/
++-- docs/
++-- docker/
++-- .env.example
++-- README.md
++-- package.json
 ```
 
-Como rodar o backend
----------------------
+## Requisitos
 
-1. Entre na pasta `backend`:
+- Node.js 20 ou superior.
+- npm 10 ou superior.
+- n8n com os workflows de extracao e feedback configurados.
 
-```bash
-cd backend
+## Configuracao
+
+Copie `.env.example` para `.env` na raiz ou use as variaveis diretamente no ambiente do backend.
+
+Principais variaveis:
+
+```env
+PORT=3001
+FRONTEND_ORIGIN=http://localhost:5173
+N8N_EXTRACTION_WEBHOOK_URL=http://localhost:5678/webhook-test/extracao
+N8N_FEEDBACK_WEBHOOK_URL=http://localhost:5678/webhook-test/feedback-sti
+N8N_EXTRACTION_FILE_FIELD=image
+UPLOAD_MAX_SIZE_MB=10
+N8N_TIMEOUT_MS=120000
+VITE_API_BASE_URL=http://localhost:3001
 ```
 
-2. Instale dependências:
+Se o n8n reclamar que o binario da imagem nao foi encontrado, ajuste `N8N_EXTRACTION_FILE_FIELD` para `image0` ou corrija o nome do binario no workflow.
+
+## Execucao local
+
+Instale as dependencias:
 
 ```bash
 npm install
 ```
 
-3. Copie `backend/.env.example` para `backend/.env` e ajuste os valores (URLs do n8n, porta, FRONTEND_URL).
-
-4. Inicie o servidor:
+Backend:
 
 ```bash
-npm start
+npm run dev:backend
 ```
 
-Como rodar o frontend
----------------------
+Frontend:
 
-O frontend é estático. Opções:
+```bash
+npm run dev:frontend
+```
 
-- Abrir `frontend/index.html` diretamente (ex.: com Live Server no VS Code).
-- Ou servir com um servidor estático (ex.: `npx serve frontend`).
+URLs locais:
 
-Configurar variáveis de ambiente
--------------------------------
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:3001`
+- Healthcheck: `http://localhost:3001/api/health`
 
-- `frontend/.env.example` (opcional, para Vite): `VITE_BACKEND_URL` — URL base do backend (ex.: `http://localhost:3000`).
-- `backend/.env.example`: `PORT`, `N8N_WEBHOOK_URL`, `N8N_FEEDBACK_WEBHOOK_URL`, `FRONTEND_URL`.
+## Endpoints
 
-Segurança
---------
+- `GET /api/health`
+- `POST /api/submissions/extract`
+- `POST /api/submissions/:id/feedback`
 
-Nunca envie para o GitHub arquivos com credenciais, `.env` reais ou dados sensíveis (chaves da API, tokens, dados pessoais de alunos). Use os arquivos `.env.example` como template.
+Consulte `docs/contratos-api.md` para os contratos completos.
 
-Status do projeto
------------------
+## Workflows n8n
 
-MVP em desenvolvimento — finalidade acadêmica.
+Os exports JSON ficam em `n8n/workflows/`:
 
+- `n8n/workflows/Extração - STI.json`
+- `n8n/workflows/Feedback.json`
+
+O workflow de extracao ja esta integrado ao contrato do backend:
+
+- Workflow `Extração - STI`, path `/extracao`.
+
+O workflow de feedback tambem esta exportado, mas ainda esta em aprimoramento:
+
+- Workflow `Feedback`, path `/feedback-sti`.
+- Antes de tratar como estavel, conferir o modo de resposta do Webhook e os mapeamentos internos do fluxo.
+
+Os exports podem conter IDs internos de credenciais e referencias a planilhas. Revise antes de publicar o repositorio em ambiente publico.
+
+Consulte:
+
+- `n8n/docs/workflow-extracao.md`
+- `n8n/docs/workflow-feedback.md`
+
+## Testes
+
+Teste do backend:
+
+```bash
+npm test
+```
+
+Build do frontend:
+
+```bash
+npm run build
+```

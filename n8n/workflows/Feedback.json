@@ -1,0 +1,451 @@
+{
+  "name": "Feedback",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "feedback-sti",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b80af177-c314-4e10-a184-13c1a8d14cd1",
+      "name": "Webhook",
+      "webhookId": "04d8f189-ee3d-417d-9f92-151a8a04eacc"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body ?? input;\nconst extracao = body.extracao ?? {};\n\nconst submission_id = String(body.submission_id ?? \"\").trim();\nconst correct_answer = String(body.correct_answer ?? \"\").trim();\n\nconst enunciado = String(extracao.enunciado ?? \"\").trim();\nconst desenvolvimento_aluno = String(extracao.desenvolvimento_aluno ?? \"\").trim();\nconst resposta_aluno = String(extracao.resposta_aluno ?? \"\").trim();\nconst legibilidade = String(extracao.legibilidade ?? \"\").trim();\nconst confianca_extracao = Number(extracao.confianca_extracao ?? 0);\nconst observacoes_extracao = String(extracao.observacoes ?? \"\").trim();\n\nfunction normalizarResposta(valor) {\n  return String(valor ?? \"\")\n    .trim()\n    .replace(\",\", \".\")\n    .replace(/[^\\d.-]/g, \"\");\n}\n\nconst resposta_aluno_normalizada = normalizarResposta(resposta_aluno);\nconst correct_answer_normalizada = normalizarResposta(correct_answer);\n\nconst resposta_correta =\n  resposta_aluno_normalizada !== \"\" &&\n  resposta_aluno_normalizada === correct_answer_normalizada;\n\nconst tipo_prompt = resposta_correta\n  ? \"resposta_correta\"\n  : \"resposta_incorreta\";\n\nconst entrada_valida = Boolean(\n  submission_id &&\n  correct_answer &&\n  enunciado &&\n  resposta_aluno\n);\n\nconst prompt_base = `\nVocê é um Sistema Tutor Inteligente para matemática do Ensino Fundamental 1.\n\nDados da questão:\n- Enunciado: ${enunciado}\n- Resposta correta esperada: ${correct_answer}\n- Desenvolvimento do aluno: ${desenvolvimento_aluno || \"não informado\"}\n- Resposta final do aluno: ${resposta_aluno || \"não informada\"}\n- Legibilidade da extração: ${legibilidade || \"não informada\"}\n- Confiança da extração: ${confianca_extracao}\n- Observações da extração: ${observacoes_extracao || \"nenhuma\"}\n\nRegras gerais:\n1. Não invente informações.\n2. Use linguagem adequada para criança do Ensino Fundamental 1 no feedback do aluno.\n3. O feedback do professor pode ser um pouco mais técnico, mas deve ser objetivo.\n4. Retorne APENAS JSON válido.\n5. Não use markdown.\n6. Não use crases.\n`;\n\nconst prompt_resposta_correta = `\n${prompt_base}\n\nA resposta final do aluno está CORRETA.\n\nSua tarefa:\n- Confirmar que o aluno acertou.\n- Explicar de forma simples por que a resposta está correta.\n- Reforçar positivamente o raciocínio.\n- Se o desenvolvimento estiver incompleto, mencione isso de forma leve para o professor, sem penalizar o aluno.\n- Sugerir uma próxima ação para consolidar o aprendizado.\n\nFormato obrigatório:\n{\n  \"acertou\": true,\n  \"status_avaliacao\": \"correta\",\n  \"tipo_erro\": \"nenhum\",\n  \"resumo_erro\": \"\",\n  \"feedback_aluno\": \"\",\n  \"feedback_professor\": \"\",\n  \"dica_proxima_acao\": \"\",\n  \"confianca_feedback\": 0.95\n}\n`;\n\nconst prompt_resposta_incorreta = `\n${prompt_base}\n\nA resposta final do aluno está INCORRETA.\n\nSua tarefa:\n- Explicar o erro provável de forma simples.\n- Identificar se o problema parece ser de cálculo, interpretação, procedimento incompleto, resposta ausente ou outro.\n- Não dar um feedback punitivo.\n- Ajudar o aluno a perceber o caminho correto.\n- Sugerir uma próxima ação para o professor trabalhar esse erro.\n\nUse estes valores:\n- status_avaliacao: \"incorreta\", \"parcial\" ou \"indefinida\"\n- tipo_erro: \"calculo\", \"interpretacao\", \"procedimento_incompleto\", \"resposta_ausente\", \"extracao_duvidosa\" ou \"outro\"\n\nFormato obrigatório:\n{\n  \"acertou\": false,\n  \"status_avaliacao\": \"incorreta\",\n  \"tipo_erro\": \"\",\n  \"resumo_erro\": \"\",\n  \"feedback_aluno\": \"\",\n  \"feedback_professor\": \"\",\n  \"dica_proxima_acao\": \"\",\n  \"confianca_feedback\": 0.90\n}\n`;\n\nconst prompt_feedback = resposta_correta\n  ? prompt_resposta_correta\n  : prompt_resposta_incorreta;\n\nreturn [\n  {\n    json: {\n      timestamp: new Date().toISOString(),\n      submission_id,\n      correct_answer,\n      correct_answer_normalizada,\n      enunciado,\n      desenvolvimento_aluno,\n      resposta_aluno,\n      resposta_aluno_normalizada,\n      resposta_correta,\n      tipo_prompt,\n      legibilidade,\n      confianca_extracao,\n      observacoes_extracao,\n      entrada_valida,\n      prompt_feedback,\n      provedor_ia: \"gemini\",\n      modelo_feedback: \"gemini\"\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "5a1fe663-18ea-46f4-843f-1db8c4bfb358",
+      "name": "Preparar dados"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.0-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.0-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.prompt_feedback }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "e2c8d561-c6e6-413a-b3ec-e2c91af681d4",
+      "name": "Gerar feedback Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "NiQQgdOXPcLsEQIT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Preparar dados').first().json;\nconst aiOutput = $input.first().json;\n\nfunction getText(value) {\n  if (!value) return \"\";\n\n  if (typeof value === \"string\") {\n    return value;\n  }\n\n  if (Array.isArray(value)) {\n    return value.map(getText).filter(Boolean).join(\"\\n\");\n  }\n\n  if (typeof value === \"object\") {\n    const priorityKeys = [\n      \"text\",\n      \"output\",\n      \"response\",\n      \"content\",\n      \"message\",\n      \"result\"\n    ];\n\n    for (const key of priorityKeys) {\n      if (value[key]) {\n        const found = getText(value[key]);\n        if (found) return found;\n      }\n    }\n\n    if (value.candidates?.[0]?.content?.parts) {\n      return getText(value.candidates[0].content.parts);\n    }\n  }\n\n  return \"\";\n}\n\nfunction extractJson(raw) {\n  if (!raw) return null;\n\n  let cleaned = String(raw)\n    .replace(/```json/gi, \"\")\n    .replace(/```/g, \"\")\n    .trim();\n\n  const start = cleaned.indexOf(\"{\");\n  const end = cleaned.lastIndexOf(\"}\");\n\n  if (start === -1 || end === -1 || end <= start) {\n    return null;\n  }\n\n  const jsonText = cleaned.slice(start, end + 1);\n\n  try {\n    return JSON.parse(jsonText);\n  } catch (error) {\n    return null;\n  }\n}\n\nconst raw_ai_response = getText(aiOutput);\nconst feedback = extractJson(raw_ai_response);\n\nconst parse_ok = feedback !== null;\n\nconst respostaCorreta =\n  String(original.resposta_aluno).trim() === String(original.correct_answer).trim();\n\nconst acertou =\n  typeof feedback?.acertou === \"boolean\"\n    ? feedback.acertou\n    : respostaCorreta;\n\nconst status_avaliacao =\n  feedback?.status_avaliacao ??\n  (respostaCorreta ? \"correta\" : \"indefinida\");\n\nconst tipo_erro =\n  feedback?.tipo_erro ??\n  (respostaCorreta ? \"nenhum\" : \"outro\");\n\nconst resumo_erro = feedback?.resumo_erro ?? \"\";\n\nconst feedback_aluno =\n  feedback?.feedback_aluno ??\n  (respostaCorreta\n    ? \"Muito bem! Sua resposta está correta.\"\n    : \"Não foi possível gerar um feedback personalizado agora.\");\n\nconst feedback_professor =\n  feedback?.feedback_professor ??\n  (parse_ok\n    ? \"\"\n    : \"A IA não retornou um JSON válido. Verifique a resposta bruta da IA no log.\");\n\nconst dica_proxima_acao =\n  feedback?.dica_proxima_acao ??\n  (respostaCorreta\n    ? \"Propor uma questão parecida para reforçar o aprendizado.\"\n    : \"Revisar o raciocínio do aluno e tentar novamente com mediação.\");\n\nconst confianca_feedback = Number(feedback?.confianca_feedback ?? 0);\n\nconst ok = parse_ok && Boolean(feedback_aluno) && Boolean(feedback_professor);\n\nconst status_n8n = ok\n  ? \"feedback_gerado_com_sucesso\"\n  : \"erro_feedback_ia\";\n\nconst resposta_backend = {\n  ok,\n  submission_id: original.submission_id,\n  fluxo: \"geracao_feedback\",\n  status_n8n,\n  provedor_ia: original.provedor_ia,\n  modelo: original.modelo_feedback,\n  avaliacao: {\n    acertou,\n    status_avaliacao,\n    tipo_erro,\n    resumo_erro,\n    feedback_aluno,\n    feedback_professor,\n    dica_proxima_acao,\n    confianca_feedback\n  },\n  entrada: {\n    correct_answer: original.correct_answer,\n    enunciado: original.enunciado,\n    desenvolvimento_aluno: original.desenvolvimento_aluno,\n    resposta_aluno: original.resposta_aluno,\n    legibilidade: original.legibilidade,\n    confianca_extracao: original.confianca_extracao,\n    observacoes_extracao: original.observacoes_extracao\n  },\n  erro: ok ? null : {\n    parse_ok,\n    mensagem: parse_ok\n      ? \"Feedback incompleto retornado pela IA.\"\n      : \"A resposta da IA não contém JSON válido.\"\n  }\n};\n\nreturn [\n  {\n    json: {\n      timestamp: original.timestamp,\n      submission_id: original.submission_id,\n      correct_answer: original.correct_answer,\n      enunciado: original.enunciado,\n      desenvolvimento_aluno: original.desenvolvimento_aluno,\n      resposta_aluno: original.resposta_aluno,\n      legibilidade: original.legibilidade,\n      confianca_extracao: original.confianca_extracao,\n      observacoes_extracao: original.observacoes_extracao,\n\n      parse_ok,\n      ok,\n      status_n8n,\n      provedor_ia: original.provedor_ia,\n      modelo: original.modelo_feedback,\n\n      acertou,\n      status_avaliacao,\n      tipo_erro,\n      resumo_erro,\n      feedback_aluno,\n      feedback_professor,\n      dica_proxima_acao,\n      confianca_feedback,\n\n      raw_ai_response,\n      resposta_backend_json: JSON.stringify(resposta_backend),\n      resposta_backend\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "9b3357b0-c426-46fa-acbe-8ce3f8314ab0",
+      "name": "Tratar resposta da IA"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Qlg5fVkPPItI9BhfCboTdZhACKcjhXtQH8vUyKwfxMA",
+          "mode": "list",
+          "cachedResultName": "logs_sti",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Qlg5fVkPPItI9BhfCboTdZhACKcjhXtQH8vUyKwfxMA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 166796732,
+          "mode": "list",
+          "cachedResultName": "feedback",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Qlg5fVkPPItI9BhfCboTdZhACKcjhXtQH8vUyKwfxMA/edit#gid=166796732"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "submission_id",
+              "displayName": "submission_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "correct_answer",
+              "displayName": "correct_answer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "enunciado",
+              "displayName": "enunciado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "desenvolvimento_aluno",
+              "displayName": "desenvolvimento_aluno",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "resposta_aluno",
+              "displayName": "resposta_aluno",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "legibilidade",
+              "displayName": "legibilidade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "confianca_extracao",
+              "displayName": "confianca_extracao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "observacoes_extracao",
+              "displayName": "observacoes_extracao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "parse_ok",
+              "displayName": "parse_ok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ok",
+              "displayName": "ok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status_n8n",
+              "displayName": "status_n8n",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "provedor_ia",
+              "displayName": "provedor_ia",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "modelo",
+              "displayName": "modelo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "acertou",
+              "displayName": "acertou",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status_avaliacao",
+              "displayName": "status_avaliacao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tipo_erro",
+              "displayName": "tipo_erro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "resumo_erro",
+              "displayName": "resumo_erro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "feedback_aluno",
+              "displayName": "feedback_aluno",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "feedback_professor",
+              "displayName": "feedback_professor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "dica_proxima_acao",
+              "displayName": "dica_proxima_acao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "confianca_feedback",
+              "displayName": "confianca_feedback",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "raw_ai_response",
+              "displayName": "raw_ai_response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "resposta_backend_json",
+              "displayName": "resposta_backend_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        976,
+        0
+      ],
+      "id": "484cb742-fba9-47c7-b04a-ea76b936af00",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x3IZiJj3pHJoOLNl",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Tratar resposta da IA').first().json.resposta_backend }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "5245d119-bb64-47db-b789-63254c756a95",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Preparar dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar dados": {
+      "main": [
+        [
+          {
+            "node": "Gerar feedback Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar feedback Gemini": {
+      "main": [
+        [
+          {
+            "node": "Tratar resposta da IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tratar resposta da IA": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "7863de8a-d4c7-4c13-88a8-b8dab4afa30b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9f061e4acc2c30d5aa6505c57e0224305f5bd22fb481a81e15974d882e60757b"
+  },
+  "id": "k4c8eTmdip1OF4Jq",
+  "tags": []
+}

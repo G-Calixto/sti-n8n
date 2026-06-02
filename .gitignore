@@ -4,12 +4,13 @@ node_modules/
 !*.env.example
 dist/
 build/
+coverage/
 logs/
-uploads/
 *.log
+uploads/
 tmp/
 temp/
-/.DS_Store
+.DS_Store
 n8n_data/
 local-files/
 .vscode/
