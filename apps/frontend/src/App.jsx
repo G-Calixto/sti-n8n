@@ -20,7 +20,18 @@ const initialState = {
 async function readApiResponse(response) {
   const data = await response.json().catch(() => null);
   if (!response.ok || !data || data.ok === false) {
-    const message = data?.error?.message || 'Nao foi possivel concluir a operacao.';
+    const details = data?.error?.details;
+    const missingFields = details?.issues
+      ?.map((issue) => issue.path || issue.message)
+      .filter(Boolean)
+      .join(', ');
+    const expectedFields = details?.expected?.join(', ');
+    const detailMessage = missingFields
+      ? ` Campos com problema: ${missingFields}.`
+      : expectedFields
+        ? ` Campos esperados: ${expectedFields}.`
+        : '';
+    const message = `${data?.error?.message || 'Nao foi possivel concluir a operacao.'}${detailMessage}`;
     throw new Error(message);
   }
   return data;

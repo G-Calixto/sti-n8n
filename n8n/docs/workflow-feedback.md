@@ -10,7 +10,7 @@ Status: em aprimoramento. O backend ja possui a rota de feedback e espera o cont
 
 - Metodo: `POST`
 - Path: `/feedback-sti`
-- Response mode no export atual: nao definido explicitamente no Webhook.
+- Response mode no export atual: `responseNode`.
 
 URL usada pelo backend:
 

@@ -23,25 +23,47 @@ const extractionResponseSchema = z.object({
   erro_parse: z.any().nullable().optional()
 });
 
+const feedbackEvaluationSchema = z.object({
+  acertou: z.boolean(),
+  status_avaliacao: z.string(),
+  tipo_erro: z.string().nullable().optional(),
+  resumo_erro: z.string().nullable().optional(),
+  feedback_aluno: z.string().min(1),
+  feedback_professor: z.string().nullable().optional(),
+  dica_proxima_acao: z.string().nullable().optional(),
+  confianca_feedback: z.union([z.number(), z.string()]).nullable().optional()
+});
+
 const feedbackResponseSchema = z.object({
-  ok: z.literal(true),
+  ok: z.boolean().optional(),
   submission_id: z.string().min(1),
   fluxo: z.string().optional(),
   status_n8n: z.string().optional(),
   provedor_ia: z.string().optional(),
   modelo: z.string().optional(),
-  avaliacao: z.object({
-    acertou: z.boolean(),
-    status_avaliacao: z.string(),
-    tipo_erro: z.string().nullable().optional(),
-    resumo_erro: z.string().nullable().optional(),
-    feedback_aluno: z.string(),
-    feedback_professor: z.string(),
-    dica_proxima_acao: z.string().nullable().optional(),
-    confianca_feedback: z.union([z.number(), z.string()]).nullable().optional()
-  }),
+  avaliacao: feedbackEvaluationSchema,
   entrada: z.any().optional(),
   erro: z.any().nullable().optional()
+});
+
+const flatFeedbackResponseSchema = z.object({
+  ok: z.boolean().optional(),
+  submission_id: z.string().min(1),
+  status_n8n: z.string().optional(),
+  provedor_ia: z.string().optional(),
+  modelo: z.string().optional(),
+  acertou: z.boolean(),
+  status_avaliacao: z.string(),
+  tipo_erro: z.string().nullable().optional(),
+  resumo_erro: z.string().nullable().optional(),
+  feedback_aluno: z.string().min(1),
+  feedback_professor: z.string().nullable().optional(),
+  dica_proxima_acao: z.string().nullable().optional(),
+  confianca_feedback: z.union([z.number(), z.string()]).nullable().optional(),
+  entrada: z.any().optional(),
+  erro: z.any().nullable().optional(),
+  resposta_backend: z.any().optional(),
+  resposta_backend_json: z.string().optional()
 });
 
 function createSubmissionId() {
@@ -56,6 +78,74 @@ function normalizeExtraction(extraction) {
     legibilidade: extraction.legibilidade || '',
     confianca_extracao: Number(extraction.confianca_extracao ?? 0),
     observacoes: extraction.observacoes || ''
+  };
+}
+
+function parseJsonField(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return null;
+  }
+}
+
+function normalizeFeedbackEvaluation(evaluation) {
+  return {
+    acertou: evaluation.acertou,
+    status_avaliacao: evaluation.status_avaliacao,
+    tipo_erro: evaluation.tipo_erro || '',
+    resumo_erro: evaluation.resumo_erro || '',
+    feedback_aluno: evaluation.feedback_aluno,
+    feedback_professor: evaluation.feedback_professor || '',
+    dica_proxima_acao: evaluation.dica_proxima_acao || '',
+    confianca_feedback: Number(evaluation.confianca_feedback ?? 0)
+  };
+}
+
+function normalizeFeedbackResponse(n8nResponse) {
+  const embeddedResponse =
+    n8nResponse?.resposta_backend ||
+    parseJsonField(n8nResponse?.resposta_backend_json);
+
+  const candidates = [n8nResponse, embeddedResponse].filter(Boolean);
+  const issues = [];
+
+  for (const candidate of candidates) {
+    const nested = feedbackResponseSchema.safeParse(candidate);
+    if (nested.success) {
+      return {
+        ...nested.data,
+        ok: true,
+        avaliacao: normalizeFeedbackEvaluation(nested.data.avaliacao),
+        status_backend: nested.data.ok === false ? 'feedback_concluido_com_alerta' : 'feedback_concluido'
+      };
+    }
+
+    const flat = flatFeedbackResponseSchema.safeParse(candidate);
+    if (flat.success) {
+      return {
+        ok: true,
+        submission_id: flat.data.submission_id,
+        fluxo: 'geracao_feedback',
+        status_n8n: flat.data.status_n8n,
+        provedor_ia: flat.data.provedor_ia,
+        modelo: flat.data.modelo,
+        avaliacao: normalizeFeedbackEvaluation(flat.data),
+        entrada: flat.data.entrada,
+        erro: flat.data.erro,
+        status_backend: flat.data.ok === false ? 'feedback_concluido_com_alerta' : 'feedback_concluido'
+      };
+    }
+
+    issues.push(...nested.error.issues, ...flat.error.issues);
+  }
+
+  return {
+    ok: false,
+    issues,
+    n8nResponse
   };
 }
 
@@ -115,29 +205,31 @@ async function generateFeedback(submissionId) {
   };
 
   const n8nResponse = await callFeedbackWorkflow(payload);
-  const parsed = feedbackResponseSchema.safeParse(n8nResponse);
-  if (!parsed.success) {
+  const parsed = normalizeFeedbackResponse(n8nResponse);
+  if (!parsed.ok) {
     throw new AppError(502, 'invalid_feedback_response', 'Resposta invalida do workflow de feedback.', {
-      issues: parsed.error.issues,
+      issues: parsed.issues,
       n8nResponse
     });
   }
 
   updateSubmission(submissionId, {
-    feedback: parsed.data.avaliacao,
-    n8n_feedback: parsed.data
+    feedback: parsed.avaliacao,
+    n8n_feedback: n8nResponse
   });
 
   return {
     ok: true,
     submission_id: submissionId,
-    status: 'feedback_concluido',
-    avaliacao: parsed.data.avaliacao
+    status: parsed.status_backend,
+    status_n8n: parsed.status_n8n,
+    avaliacao: parsed.avaliacao
   };
 }
 
 module.exports = {
   extractSubmission,
   generateFeedback,
-  normalizeExtraction
+  normalizeExtraction,
+  normalizeFeedbackResponse
 };
