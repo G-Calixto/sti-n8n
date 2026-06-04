@@ -8,7 +8,6 @@ Tipo: `multipart/form-data`
 
 Campos:
 
-- `teacherName`: nome do professor.
 - `correctAnswer`: resposta correta.
 - `consentAccepted`: deve ser `true`.
 - `image`: arquivo de imagem.
@@ -22,7 +21,6 @@ Tipo: `multipart/form-data`
 Campos:
 
 - `submissionId`
-- `teacherName`
 - `correctAnswer`
 - `consentAccepted`
 - arquivo no campo configurado por `N8N_EXTRACTION_FILE_FIELD`, padrao `image`.

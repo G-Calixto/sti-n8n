@@ -12,12 +12,6 @@
               "type": "string"
             },
             {
-              "id": "8c32b793-19b1-4259-a4f9-f25b67c4ba80",
-              "name": "teacher_id",
-              "value": "={{ $json.body.teacherName }}",
-              "type": "string"
-            },
-            {
               "id": "ef7bfd48-bf51-42ed-bf1b-d0a1edfd0df7",
               "name": "correct_answer",
               "value": "={{ $json.body.correctAnswer }}",
@@ -72,16 +66,6 @@
             {
               "id": "edd725cc-c517-4315-8677-f2bb7bd30bce",
               "leftValue": "={{ $json.submissionId }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty",
-                "singleValue": true
-              }
-            },
-            {
-              "id": "e133d88e-8c14-44e0-bc1a-9c995c8398d6",
-              "leftValue": "={{ $json.teacher_id }}",
               "rightValue": "",
               "operator": {
                 "type": "string",

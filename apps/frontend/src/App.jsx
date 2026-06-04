@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
 const initialForm = {
-  teacherName: '',
   correctAnswer: '',
   image: null
 };
@@ -12,6 +11,7 @@ const initialState = {
   view: 'inicio',
   form: initialForm,
   consentAccepted: false,
+  consentScrolledToEnd: false,
   submission: null,
   feedback: null,
   error: null
@@ -31,7 +31,7 @@ async function readApiResponse(response) {
       : expectedFields
         ? ` Campos esperados: ${expectedFields}.`
         : '';
-    const message = `${data?.error?.message || 'Nao foi possivel concluir a operacao.'}${detailMessage}`;
+    const message = `${data?.error?.message || 'Não foi possível concluir a operação.'}${detailMessage}`;
     throw new Error(message);
   }
   return data;
@@ -75,6 +75,18 @@ export default function App() {
     setState(initialState);
   }
 
+  function handleConsentScroll(event) {
+    const element = event.currentTarget;
+    const reachedEnd = element.scrollTop + element.clientHeight >= element.scrollHeight - 4;
+
+    if (!reachedEnd || state.consentScrolledToEnd) return;
+
+    setState((current) => ({
+      ...current,
+      consentScrolledToEnd: true
+    }));
+  }
+
   async function submitExtraction(event) {
     event.preventDefault();
 
@@ -84,12 +96,11 @@ export default function App() {
     }
 
     if (!state.form.image) {
-      setState((current) => ({ ...current, view: 'erro', error: 'Selecione uma imagem da questao.' }));
+      setState((current) => ({ ...current, view: 'erro', error: 'Selecione uma imagem da questão.' }));
       return;
     }
 
     const formData = new FormData();
-    formData.append('teacherName', state.form.teacherName);
     formData.append('correctAnswer', state.form.correctAnswer);
     formData.append('consentAccepted', String(state.consentAccepted));
     formData.append('image', state.form.image);
@@ -151,61 +162,194 @@ export default function App() {
     <main className="app-shell">
       <section className="panel">
         <header className="header">
-          <p className="eyebrow">MVP academico</p>
+          <p className="eyebrow">MVP acadêmico</p>
           <h1>Sistema Tutor Inteligente</h1>
           <p>
-            Envie uma questao resolvida por imagem, extraia a resposta com n8n/Gemini e gere feedback pedagogico.
+            Envie uma imagem de uma questão com sua resolução e nós geraremos o feedback para o aluno.
           </p>
         </header>
 
         {state.view === 'inicio' && (
           <div className="stack">
-            <p>
-              O fluxo protege os webhooks no backend e mantem os dados apenas em memoria durante este MVP.
-            </p>
-            <button type="button" onClick={() => setState((current) => ({ ...current, view: 'consentimento_lgpd' }))}>
-              Comecar
+            <button
+              type="button"
+              onClick={() =>
+                setState((current) => ({
+                  ...current,
+                  consentScrolledToEnd: false,
+                  view: 'consentimento_lgpd'
+                }))
+              }
+            >
+              Começar
             </button>
           </div>
         )}
 
         {state.view === 'consentimento_lgpd' && (
           <div className="stack">
-            <h2>Termo LGPD simplificado</h2>
-            <p>
-              Este sistema e usado para pesquisa academica. Evite enviar imagens com dados pessoais de alunos.
-              Ao continuar, voce confirma que entende essa orientacao.
-            </p>
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={state.consentAccepted}
-                onChange={(event) => setState((current) => ({ ...current, consentAccepted: event.target.checked }))}
-              />
-              <span>Li e aceito o termo para uso academico.</span>
-            </label>
+            <article className="consent-term" onScroll={handleConsentScroll}>
+              <h3>Termo de Consentimento Livre e Esclarecido</h3>
+
+              <p>
+                Você está sendo convidado para participar da pesquisa "Correção de Questões de Matemática Manuscritas
+                com Auxílio de um Sistema Tutor Inteligente (STI)".
+              </p>
+
+              <p>Esta pesquisa tem como intuito:</p>
+              <ol>
+                <li>
+                  compreender e desenvolver um processo para a elaboração de feedbacks baseado na experiência do
+                  professor(a) para alunos do Ensino Fundamental no contexto do ensino de Matemática; e
+                </li>
+                <li>
+                  desenvolver habilidades básicas de Matemática dos estudantes do Ensino Fundamental brasileiro.
+                </li>
+              </ol>
+
+              <p>
+                A pesquisa está centrada em duas etapas principais: conceber e avaliar um STI para automatizar a
+                correção de questões de Matemática manuscritas, conforme o objetivo descrito acima. Nesse contexto,
+                você irá nos ajudar a entender sua prática docente, bem como seus objetivos, desafios, problemas e
+                limitações encontradas em sua jornada de trabalho.
+              </p>
+
+              <p>Sua participação é livre.</p>
+
+              <p>
+                Os benefícios de sua participação serão colaborar para o avanço na ciência, no que diz respeito à
+                concepção, implementação, avaliação e uso de um STI como forma de apoio ao processo de ensino e
+                aprendizagem de Matemática no contexto do Ensino Fundamental brasileiro, bem como ao uso de uma
+                tecnologia educacional durante suas aulas.
+              </p>
+
+              <p>
+                A sua participação neste estudo envolve riscos mínimos, como a violação de privacidade. Para mitigar
+                tal violação, todos os dados coletados serão armazenados de forma segura, sigilosa e anônima.
+              </p>
+
+              <p>
+                A sua participação nesse estudo é voluntária. Você não terá nenhum benefício financeiro por participar
+                desse estudo, podendo recusar-se a participar ou retirar seu consentimento, em qualquer fase da
+                pesquisa, sem penalização alguma.
+              </p>
+
+              <p>A qualquer momento você pode desistir de participar e retirar seu consentimento.</p>
+
+              <p>
+                Sua recusa não trará nenhum prejuízo em relação às instituições e pesquisadores envolvidos nesse
+                estudo.
+              </p>
+
+              <p>
+                Sua participação envolverá participar de uma entrevista semiestruturada e pode ser realizada conforme
+                sua disponibilidade e preferências. Em todos os momentos, não é obrigatório que você responda a todas
+                as perguntas feitas, se assim você desejar.
+              </p>
+
+              <p>
+                Antes e durante o curso da pesquisa, você poderá solicitar esclarecimentos a respeito dos procedimentos
+                ou qualquer outra questão relacionada com a pesquisa. A pesquisadora responsável estará disponível para
+                esclarecer suas dúvidas.
+              </p>
+
+              <p>
+                Caso sejam identificados e comprovados danos provenientes desta pesquisa, você tem assegurado o direito
+                à assistência e indenização.
+              </p>
+
+              <p>Você poderá receber assistência integral e imediata por danos, de forma gratuita.</p>
+
+              <p>Você poderá requerer indenização por danos.</p>
+
+              <p>Você poderá receber ressarcimento de gastos, incluindo os gastos de acompanhantes.</p>
+
+              <p>Seus dados pessoais envolvidos na pesquisa serão confidenciais.</p>
+
+              <p>
+                Os dados coletados no estudo serão analisados e todos os participantes receberão pelo e-mail informado,
+                caso haja interesse, os resultados da análise dos dados coletados, por meio de artigo publicado.
+              </p>
+
+              <p>
+                Toda e qualquer informação coletada durante o estudo é tratada como confidencial. Os dados não serão
+                divulgados de forma a possibilitar sua identificação e serão mantidos em uma base de dados protegida.
+              </p>
+
+              <p>
+                Os resultados obtidos através desta pesquisa serão utilizados para conceber, desenvolver e avaliar um
+                STI que automatiza a correção de questões de Matemática manuscritas e busca desenvolver habilidades
+                básicas de Matemática dos estudantes do Ensino Fundamental brasileiro.
+              </p>
+
+              <p>Ao aceitar participar da pesquisa, você deverá:</p>
+              <ol>
+                <li>Aceitar participar da pesquisa, o que corresponderá à assinatura do TCLE de forma eletrônica.</li>
+                <li>Participar das atividades descritas no item 8, conforme sua disponibilidade.</li>
+              </ol>
+
+              <p>O presente documento segue as normas da Resolução CNS Nº 510/2016.</p>
+
+              <h3>Contato</h3>
+              <p>No caso de haver dúvidas sobre aspectos éticos desse estudo, você poderá consultar:</p>
+              <p>
+                <strong>Pesquisadora Responsável:</strong> Laíza Ribeiro Silva
+              </p>
+              <p>
+                <strong>Endereço:</strong> Universidade de São Paulo, Instituto de Ciências Matemáticas e de
+                Computação, Avenida Trabalhador são-carlense, 400, Centro, 13566590 - São Carlos, SP - Brasil
+              </p>
+              <p>
+                <strong>E-mail:</strong> laizaribeiro@usp.br
+              </p>
+              <p>
+                <strong>Telefone para contato:</strong> +55 16 33736720
+              </p>
+
+              <h3>Para contato com o CEP/EACH</h3>
+              <p>
+                <strong>Comitê de Ética em Pesquisa - CEP/EACH</strong>
+              </p>
+              <p>Av. Arlindo Béttio, 1000, Ermelino Matarazzo, São Paulo-SP</p>
+              <p>
+                <strong>Telefone:</strong> (11) 3091-1046
+              </p>
+              <p>
+                <strong>E-mail:</strong> cep-each@usp.br
+              </p>
+              <p>
+                <strong>Atendimento:</strong> segundas às sextas-feiras, das 09:00 às 11:00 e das 14:00 às 16:00.
+                Localização: Prédio I1, sala T14.
+              </p>
+
+              <p className="consent-acceptance">
+                Ao clicar em "Próxima", eu concordo com todos os termos da pesquisa descritos acima.
+              </p>
+            </article>
+
+            {!state.consentScrolledToEnd && (
+              <p className="consent-scroll-note">Role até o final do termo de consentimento para prosseguir.</p>
+            )}
+
             <button
               type="button"
-              disabled={!state.consentAccepted}
-              onClick={() => setState((current) => ({ ...current, view: 'formulario_submissao' }))}
+              disabled={!state.consentScrolledToEnd}
+              onClick={() =>
+                setState((current) => ({
+                  ...current,
+                  consentAccepted: true,
+                  view: 'formulario_submissao'
+                }))
+              }
             >
-              Continuar
+              Próxima
             </button>
           </div>
         )}
 
         {['formulario_submissao', 'extraindo_imagem', 'erro'].includes(state.view) && !state.submission && (
           <form className="stack" onSubmit={submitExtraction}>
-            <h2>Enviar questao</h2>
-            <label>
-              Nome do professor
-              <input
-                required
-                type="text"
-                value={state.form.teacherName}
-                onChange={(event) => updateForm('teacherName', event.target.value)}
-              />
-            </label>
+            <h2>Enviar questão</h2>
             <label>
               Resposta correta
               <input
@@ -216,7 +360,7 @@ export default function App() {
               />
             </label>
             <label>
-              Imagem da questao
+              Imagem da questão
               <input
                 required
                 type="file"
@@ -225,9 +369,9 @@ export default function App() {
               />
             </label>
             <button type="submit" disabled={isBusy}>
-              Enviar para extracao
+              Enviar para extração
             </button>
-            {state.view === 'extraindo_imagem' && <Loading text="Extraindo enunciado da questao..." />}
+            {state.view === 'extraindo_imagem' && <Loading text="Extraindo enunciado da questão..." />}
           </form>
         )}
 
@@ -239,16 +383,15 @@ export default function App() {
 
         {extraction && (
           <section className="result-section">
-            <h2>Extracao da imagem</h2>
+            <h2>Extração da imagem</h2>
             <Field label="Enunciado" value={extraction.enunciado} />
             <Field label="Desenvolvimento do aluno" value={extraction.desenvolvimento_aluno} />
             <Field label="Resposta do aluno" value={extraction.resposta_aluno} />
             <Field label="Legibilidade" value={extraction.legibilidade} />
-            <Field label="Confianca da extracao" value={extraction.confianca_extracao} />
-            <Field label="Observacoes" value={extraction.observacoes} />
+            <Field label="Observações" value={extraction.observacoes} />
             <Field label="Resultado preliminar" value={preliminary?.resposta_correta ? 'correta' : 'incorreta'} />
 
-            {state.view === 'gerando_feedback' && <Loading text="Gerando feedback pedagogico..." />}
+            {state.view === 'gerando_feedback' && <Loading text="Gerando feedback pedagógico..." />}
 
             {!feedback && state.view !== 'gerando_feedback' && (
               <button type="button" onClick={requestFeedback} disabled={isBusy}>
@@ -260,15 +403,15 @@ export default function App() {
 
         {feedback && (
           <section className="result-section">
-            <h2>Feedback pedagogico</h2>
+            <h2>Feedback pedagógico</h2>
             <Field label="Feedback para o aluno" value={feedback.feedback_aluno} />
             <Field label="Feedback para o professor" value={feedback.feedback_professor} />
             <Field label="Tipo de erro" value={feedback.tipo_erro} />
             <Field label="Resumo do erro" value={feedback.resumo_erro} />
-            <Field label="Dica de proxima acao" value={feedback.dica_proxima_acao} />
-            <Field label="Confianca do feedback" value={feedback.confianca_feedback} />
+            <Field label="Dica de próxima ação" value={feedback.dica_proxima_acao} />
+            <Field label="Confiança do feedback" value={feedback.confianca_feedback} />
             <button type="button" onClick={resetFlow}>
-              Nova submissao
+              Nova submissão
             </button>
           </section>
         )}

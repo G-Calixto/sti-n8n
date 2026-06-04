@@ -20,7 +20,6 @@ const upload = multer({
 });
 
 const extractBodySchema = z.object({
-  teacherName: z.string().trim().min(1, 'Informe o nome do professor.'),
   correctAnswer: z.string().trim().min(1, 'Informe a resposta correta.'),
   consentAccepted: z.preprocess((value) => value === true || value === 'true', z.literal(true, {
     errorMap: () => ({ message: 'E necessario aceitar o termo LGPD antes de enviar.' })

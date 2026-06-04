@@ -149,11 +149,10 @@ function normalizeFeedbackResponse(n8nResponse) {
   };
 }
 
-async function extractSubmission({ teacherName, correctAnswer, consentAccepted, image }) {
+async function extractSubmission({ correctAnswer, consentAccepted, image }) {
   const submissionId = createSubmissionId();
   const n8nResponse = await callExtractionWorkflow({
     submissionId,
-    teacherName,
     correctAnswer,
     consentAccepted,
     image
@@ -171,7 +170,6 @@ async function extractSubmission({ teacherName, correctAnswer, consentAccepted, 
   const preliminaryEvaluation = evaluateAnswer(correctAnswer, extraction.resposta_aluno);
   const submission = {
     submission_id: parsed.data.submission_id || submissionId,
-    teacherName,
     correctAnswer,
     extracao: extraction,
     avaliacao_preliminar: preliminaryEvaluation,

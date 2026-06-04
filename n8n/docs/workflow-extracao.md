@@ -23,7 +23,6 @@ Tipo: `multipart/form-data`
 Campos:
 
 - `submissionId`
-- `teacherName`
 - `correctAnswer`
 - `consentAccepted`
 - imagem como binario

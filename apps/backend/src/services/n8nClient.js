@@ -15,10 +15,9 @@ function normalizeN8nData(data) {
   return data;
 }
 
-async function callExtractionWorkflow({ submissionId, teacherName, correctAnswer, consentAccepted, image }) {
+async function callExtractionWorkflow({ submissionId, correctAnswer, consentAccepted, image }) {
   const form = new FormData();
   form.append('submissionId', submissionId);
-  form.append('teacherName', teacherName);
   form.append('correctAnswer', correctAnswer);
   form.append('consentAccepted', String(consentAccepted === true));
 

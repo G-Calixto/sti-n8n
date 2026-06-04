@@ -149,7 +149,7 @@ Resposta esperada:
 3. Garantir que `N8N_EXTRACTION_WEBHOOK_URL` aponta para `/webhook-test/extracao` ou `/webhook/extracao`, conforme o modo usado.
 4. Abrir o frontend.
 5. Aceitar o termo.
-6. Informar nome do professor, resposta correta e imagem.
+6. Informar resposta correta e imagem.
 7. Enviar.
 8. Confirmar que a tela mostra `Extraindo enunciado da questao...`.
 9. Confirmar que aparecem os dados extraidos e o botao `Visualizar feedback`.
