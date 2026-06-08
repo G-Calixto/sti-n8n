@@ -170,10 +170,46 @@ input[type='file'] {
   color: #991b1b;
 }
 
+.context-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #e6ebf0;
+}
+
+.context-section h2 {
+  margin: 0 0 12px;
+}
+
+.image-preview {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  margin-bottom: 14px;
+  border: 1px solid #dce3ea;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #f8fafc;
+}
+
+.muted {
+  color: #526173;
+}
+
 .result-section {
   margin-top: 22px;
   padding-top: 18px;
   border-top: 1px solid #e6ebf0;
+}
+
+.button-row {
+  display: grid;
+  gap: 12px;
+}
+
+.secondary-button {
+  border: 1px solid #cad3dd;
+  background: white;
+  color: #172033;
 }
 
 @keyframes spin {

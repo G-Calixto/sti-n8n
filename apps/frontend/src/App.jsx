@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
@@ -57,9 +57,23 @@ function Field({ label, value }) {
 
 export default function App() {
   const [state, setState] = useState(initialState);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('');
 
   const api = useMemo(() => API_BASE_URL.replace(/\/$/, ''), []);
   const isBusy = state.view === 'extraindo_imagem' || state.view === 'gerando_feedback';
+  const hasSubmittedContext = Boolean(state.form.image || state.form.correctAnswer);
+
+  useEffect(() => {
+    if (!state.form.image) {
+      setImagePreviewUrl('');
+      return undefined;
+    }
+
+    const previewUrl = URL.createObjectURL(state.form.image);
+    setImagePreviewUrl(previewUrl);
+
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [state.form.image]);
 
   function updateForm(field, value) {
     setState((current) => ({
@@ -69,6 +83,10 @@ export default function App() {
         [field]: value
       }
     }));
+  }
+
+  function handleImageChange(event) {
+    updateForm('image', event.target.files?.[0] || null);
   }
 
   function resetFlow() {
@@ -157,6 +175,8 @@ export default function App() {
   const extraction = state.submission?.extracao;
   const preliminary = state.submission?.avaliacao_preliminar;
   const feedback = state.feedback?.avaliacao;
+  const shouldShowContext = hasSubmittedContext && state.view !== 'inicio' && state.view !== 'consentimento_lgpd';
+  const shouldShowExtraction = extraction && !feedback;
 
   return (
     <main className="app-shell">
@@ -351,21 +371,21 @@ export default function App() {
           <form className="stack" onSubmit={submitExtraction}>
             <h2>Enviar questão</h2>
             <label>
+              Imagem da questão
+              <input
+                required
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+              />
+            </label>
+            <label>
               Resposta correta
               <input
                 required
                 type="text"
                 value={state.form.correctAnswer}
                 onChange={(event) => updateForm('correctAnswer', event.target.value)}
-              />
-            </label>
-            <label>
-              Imagem da questão
-              <input
-                required
-                type="file"
-                accept="image/*"
-                onChange={(event) => updateForm('image', event.target.files?.[0] || null)}
               />
             </label>
             <button type="submit" disabled={isBusy}>
@@ -381,7 +401,19 @@ export default function App() {
           </div>
         )}
 
-        {extraction && (
+        {shouldShowContext && (
+          <section className="context-section">
+            <h2>Dados da submissão</h2>
+            {imagePreviewUrl ? (
+              <img className="image-preview" src={imagePreviewUrl} alt="Preview da imagem enviada" />
+            ) : (
+              <p className="muted">Nenhuma imagem selecionada.</p>
+            )}
+            <Field label="Resposta correta informada" value={state.form.correctAnswer} />
+          </section>
+        )}
+
+        {shouldShowExtraction && (
           <section className="result-section">
             <h2>Extração da imagem</h2>
             <Field label="Enunciado" value={extraction.enunciado} />
@@ -394,9 +426,14 @@ export default function App() {
             {state.view === 'gerando_feedback' && <Loading text="Gerando feedback pedagógico..." />}
 
             {!feedback && state.view !== 'gerando_feedback' && (
-              <button type="button" onClick={requestFeedback} disabled={isBusy}>
-                Visualizar feedback
-              </button>
+              <div className="button-row">
+                <button type="button" className="secondary-button" onClick={resetFlow}>
+                  Reiniciar processo
+                </button>
+                <button type="button" onClick={requestFeedback} disabled={isBusy}>
+                  Visualizar feedback
+                </button>
+              </div>
             )}
           </section>
         )}
@@ -405,13 +442,9 @@ export default function App() {
           <section className="result-section">
             <h2>Feedback pedagógico</h2>
             <Field label="Feedback para o aluno" value={feedback.feedback_aluno} />
-            <Field label="Feedback para o professor" value={feedback.feedback_professor} />
-            <Field label="Tipo de erro" value={feedback.tipo_erro} />
-            <Field label="Resumo do erro" value={feedback.resumo_erro} />
             <Field label="Dica de próxima ação" value={feedback.dica_proxima_acao} />
-            <Field label="Confiança do feedback" value={feedback.confianca_feedback} />
             <button type="button" onClick={resetFlow}>
-              Nova submissão
+              Reiniciar processo
             </button>
           </section>
         )}
