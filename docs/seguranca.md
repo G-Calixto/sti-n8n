@@ -31,6 +31,8 @@ Em producao, configurar o dominio real do frontend.
 - O frontend nao acessa o n8n.
 - URLs dos webhooks ficam em `N8N_EXTRACTION_WEBHOOK_URL` e `N8N_FEEDBACK_WEBHOOK_URL`.
 - Exports de workflows podem conter IDs internos de credenciais e planilhas. Revise antes de publicar.
+- O n8n roda junto com backend e frontend no mesmo `docker-compose` (ver `deploy.md`), na mesma rede interna. O editor do n8n (porta 5678) fica exposto publicamente na droplet — por isso precisa de HTTPS na frente (igual backend/frontend) e de uma senha forte de login, ja que fica acessivel por qualquer um que descubra o endereco.
+- `N8N_ENCRYPTION_KEY` nunca deve mudar depois que credenciais/workflows ja existem em `n8n_data/` — mudar o valor torna tudo o que ja foi salvo ilegivel. Trate essa chave como um segredo tao sensivel quanto as credenciais do Gemini.
 
 ## Google Sheets
 

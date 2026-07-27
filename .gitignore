@@ -11,6 +11,9 @@ uploads/
 tmp/
 temp/
 .DS_Store
+Thumbs.db
+desktop.ini
+*.swp
 n8n_data/
 local-files/
 .vscode/

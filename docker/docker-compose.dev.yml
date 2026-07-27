@@ -18,3 +18,22 @@ services:
       - "5173:80"
     depends_on:
       - backend
+
+  n8n:
+    image: n8nio/n8n:latest
+    env_file:
+      - ../.env
+    environment:
+      - N8N_PORT=5678
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+      - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+      - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+      - N8N_PAYLOAD_SIZE_MAX=16
+    volumes:
+      - ../n8n_data:/home/node/.n8n
+      - ../local-files:/files
+    ports:
+      - "5678:5678"

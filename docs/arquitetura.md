@@ -47,3 +47,7 @@ Nao ha banco de dados neste MVP. As submisssoes ficam em memoria no backend. Se 
 - Webhooks do n8n ficam em variaveis de ambiente do backend.
 - Chaves Gemini ficam no n8n, nao no frontend.
 - Imagens nao sao salvas permanentemente.
+
+## Deploy: backend, frontend e n8n na mesma stack
+
+`docker/docker-compose.dev.yml` e `docker-compose.prod.yml` sobem `backend`, `frontend` e `n8n` no mesmo arquivo de Compose, na mesma rede interna — nao existem mais duas stacks Docker separadas para o app e para o n8n. Dentro dessa rede, o backend chama o n8n pelo nome do servico (`http://n8n:5678/...`) em vez de `localhost`. Os dados do n8n (workflows, credenciais, historico de execucoes) ficam em `n8n_data/` e `local-files/` na raiz do `pibit-n8n`, fora do versionamento. Ver `deploy.md` para o passo a passo de deploy.
