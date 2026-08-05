@@ -1,5 +1,7 @@
 # Contratos de API
 
+> Este documento descreve só o que está **hoje implementado e rodando** (extração + geração de feedback, 2 chamadas do frontend). O contrato do próximo passo planejado (revisão da extração, questionário pedagógico, aprovação/regeneração de feedback) está em `docs/novo-fluxo/contratos.md` — ainda sem código correspondente.
+
 ## Frontend -> Backend: extracao
 
 `POST /api/submissions/extract`
@@ -98,6 +100,8 @@ Webhook configurado em `N8N_FEEDBACK_WEBHOOK_URL`.
 
 ## n8n feedback -> Backend
 
+`feedback_aluno` é o único campo que o backend exige de fato (ver `apps/backend/src/services/submissionService.js`, `feedbackEvaluationSchema`). Os prompts atuais em `docs/prompts/` retornam só `{"feedback_aluno": ""}` — os demais campos abaixo (`tipo_erro`, `resumo_erro`, `feedback_professor`, `dica_proxima_acao`, `confianca_feedback`) são **legado**: podem vir vazios, ausentes ou não confiáveis, e não devem ser tratados como garantidos.
+
 ```json
 {
   "ok": true,
@@ -112,8 +116,8 @@ Webhook configurado em `N8N_FEEDBACK_WEBHOOK_URL`.
     "tipo_erro": "nenhum",
     "resumo_erro": "",
     "feedback_aluno": "texto para o aluno",
-    "feedback_professor": "texto para o professor",
-    "dica_proxima_acao": "proxima acao sugerida",
+    "feedback_professor": "texto para o professor (legado, nao garantido)",
+    "dica_proxima_acao": "legado, nao garantido - o prompt atual nao gera mais este campo",
     "confianca_feedback": 0.95
   },
   "entrada": {
@@ -142,8 +146,8 @@ Webhook configurado em `N8N_FEEDBACK_WEBHOOK_URL`.
     "tipo_erro": "nenhum",
     "resumo_erro": "",
     "feedback_aluno": "texto para o aluno",
-    "feedback_professor": "texto para o professor",
-    "dica_proxima_acao": "proxima acao sugerida",
+    "feedback_professor": "legado, nao garantido",
+    "dica_proxima_acao": "legado, nao garantido",
     "confianca_feedback": 0.95
   }
 }

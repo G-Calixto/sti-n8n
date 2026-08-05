@@ -24,8 +24,8 @@ const extractionResponseSchema = z.object({
 });
 
 const feedbackEvaluationSchema = z.object({
-  acertou: z.boolean(),
-  status_avaliacao: z.string(),
+  acertou: z.boolean().optional(),
+  status_avaliacao: z.string().optional(),
   tipo_erro: z.string().nullable().optional(),
   resumo_erro: z.string().nullable().optional(),
   feedback_aluno: z.string().min(1),
@@ -52,8 +52,8 @@ const flatFeedbackResponseSchema = z.object({
   status_n8n: z.string().optional(),
   provedor_ia: z.string().optional(),
   modelo: z.string().optional(),
-  acertou: z.boolean(),
-  status_avaliacao: z.string(),
+  acertou: z.boolean().optional(),
+  status_avaliacao: z.string().optional(),
   tipo_erro: z.string().nullable().optional(),
   resumo_erro: z.string().nullable().optional(),
   feedback_aluno: z.string().min(1),
@@ -149,6 +149,31 @@ function normalizeFeedbackResponse(n8nResponse) {
   };
 }
 
+function buildAvaliacaoOficial(correctAnswer, respostaAluno) {
+  const resultado = evaluateAnswer(correctAnswer, respostaAluno);
+  return {
+    resposta_correta: resultado.resposta_correta,
+    status: resultado.resposta_correta ? 'correta' : 'incorreta'
+  };
+}
+
+function validateQuestionarioContraAvaliacao(questionario, avaliacao) {
+  if (questionario.tipo !== avaliacao.status) {
+    throw new AppError(400, 'questionario_incompatible', 'O tipo do questionario nao corresponde ao resultado oficial da avaliacao.', {
+      tipo_questionario: questionario.tipo,
+      status_avaliacao: avaliacao.status
+    });
+  }
+
+  if (questionario.tipo === 'correta' && (!questionario.caso_correto || questionario.caso_incorreto)) {
+    throw new AppError(400, 'questionario_incompatible', 'Questionario do caso correto deve preencher caso_correto e manter caso_incorreto nulo.');
+  }
+
+  if (questionario.tipo === 'incorreta' && (!questionario.caso_incorreto || questionario.caso_correto)) {
+    throw new AppError(400, 'questionario_incompatible', 'Questionario do caso incorreto deve preencher caso_incorreto e manter caso_correto nulo.');
+  }
+}
+
 async function extractSubmission({ correctAnswer, consentAccepted, image }) {
   const submissionId = createSubmissionId();
   const n8nResponse = await callExtractionWorkflow({
@@ -166,13 +191,21 @@ async function extractSubmission({ correctAnswer, consentAccepted, image }) {
     });
   }
 
-  const extraction = normalizeExtraction(parsed.data.extracao);
-  const preliminaryEvaluation = evaluateAnswer(correctAnswer, extraction.resposta_aluno);
+  const extracao = normalizeExtraction(parsed.data.extracao);
+  const preliminaryEvaluation = evaluateAnswer(correctAnswer, extracao.resposta_aluno);
   const submission = {
     submission_id: parsed.data.submission_id || submissionId,
     correctAnswer,
-    extracao: extraction,
+    extracao_original: extracao,
+    extracao_revisada: null,
+    avaliacao: null,
     avaliacao_preliminar: preliminaryEvaluation,
+    questionario: null,
+    intencao_professor: '',
+    feedback: null,
+    feedback_generation: 0,
+    feedback_final_aprovado: '',
+    feedback_aprovado: false,
     n8n_extraction: parsed.data,
     createdAt: new Date().toISOString()
   };
@@ -183,12 +216,46 @@ async function extractSubmission({ correctAnswer, consentAccepted, image }) {
     submission_id: submission.submission_id,
     status: 'extracao_concluida',
     avaliacao_preliminar: preliminaryEvaluation,
-    extracao: extraction,
+    extracao,
     can_request_feedback: true
   };
 }
 
-async function generateFeedback(submissionId) {
+async function confirmExtraction(submissionId, extracaoInput) {
+  const submission = getSubmission(submissionId);
+  if (!submission) {
+    throw new AppError(404, 'submission_not_found', 'Submissao nao encontrada. Envie a imagem novamente para revisar a extracao.', {
+      submission_id: submissionId
+    });
+  }
+
+  const extracaoRevisada = normalizeExtraction(extracaoInput);
+  if (!extracaoRevisada.resposta_aluno) {
+    throw new AppError(400, 'invalid_extraction_fields', 'A resposta do aluno nao pode ficar vazia.');
+  }
+
+  const avaliacao = buildAvaliacaoOficial(submission.correctAnswer, extracaoRevisada.resposta_aluno);
+
+  updateSubmission(submissionId, {
+    extracao_revisada: extracaoRevisada,
+    avaliacao,
+    questionario: null,
+    feedback: null,
+    feedback_generation: 0,
+    feedback_final_aprovado: '',
+    feedback_aprovado: false
+  });
+
+  return {
+    ok: true,
+    submission_id: submissionId,
+    status: 'extracao_revisada',
+    extracao: extracaoRevisada,
+    avaliacao
+  };
+}
+
+async function generateFeedback(submissionId, { questionario, intencaoProfessor, regenerar, instrucaoRegeneracao }) {
   const submission = getSubmission(submissionId);
   if (!submission) {
     throw new AppError(404, 'submission_not_found', 'Submissao nao encontrada. Envie a imagem novamente para gerar feedback.', {
@@ -196,10 +263,40 @@ async function generateFeedback(submissionId) {
     });
   }
 
+  if (!submission.extracao_revisada || !submission.avaliacao) {
+    throw new AppError(400, 'extraction_not_reviewed', 'Confirme a extracao revisada antes de gerar o feedback.', {
+      submission_id: submissionId
+    });
+  }
+
+  const questionarioVazio = !questionario || Object.keys(questionario).length === 0;
+  let questionarioFinal = questionario;
+
+  if (regenerar && questionarioVazio) {
+    if (!submission.questionario) {
+      throw new AppError(400, 'questionnaire_not_found', 'Nenhum questionario salvo para reutilizar na regeneracao.', {
+        submission_id: submissionId
+      });
+    }
+    questionarioFinal = submission.questionario;
+  } else if (!questionarioVazio) {
+    validateQuestionarioContraAvaliacao(questionario, submission.avaliacao);
+  } else {
+    throw new AppError(400, 'invalid_feedback_request', 'Informe o questionario pedagogico para gerar o feedback.');
+  }
+
   const payload = {
     submission_id: submission.submission_id,
+    feedback_generation: submission.feedback_generation + 1,
     correct_answer: submission.correctAnswer,
-    extracao: submission.extracao
+    extracao: submission.extracao_revisada,
+    avaliacao: submission.avaliacao,
+    questionario: questionarioFinal,
+    intencao_professor: intencaoProfessor || '',
+    regeneracao: {
+      solicitada: Boolean(regenerar),
+      instrucao: instrucaoRegeneracao || ''
+    }
   };
 
   const n8nResponse = await callFeedbackWorkflow(payload);
@@ -212,8 +309,10 @@ async function generateFeedback(submissionId) {
   }
 
   updateSubmission(submissionId, {
+    questionario: questionarioFinal,
+    intencao_professor: intencaoProfessor || '',
     feedback: parsed.avaliacao,
-    n8n_feedback: n8nResponse
+    feedback_generation: payload.feedback_generation
   });
 
   return {
@@ -221,13 +320,44 @@ async function generateFeedback(submissionId) {
     submission_id: submissionId,
     status: parsed.status_backend,
     status_n8n: parsed.status_n8n,
+    feedback_generation: payload.feedback_generation,
     avaliacao: parsed.avaliacao
+  };
+}
+
+async function approveFeedback(submissionId, feedbackAluno) {
+  const submission = getSubmission(submissionId);
+  if (!submission) {
+    throw new AppError(404, 'submission_not_found', 'Submissao nao encontrada.', {
+      submission_id: submissionId
+    });
+  }
+
+  if (!feedbackAluno || !feedbackAluno.trim()) {
+    throw new AppError(400, 'invalid_approval_request', 'Informe o texto final do feedback para aprovar.');
+  }
+
+  updateSubmission(submissionId, {
+    feedback_final_aprovado: feedbackAluno,
+    feedback_aprovado: true
+  });
+
+  return {
+    ok: true,
+    submission_id: submissionId,
+    status: 'feedback_aprovado',
+    avaliacao: {
+      feedback_aluno: feedbackAluno
+    }
   };
 }
 
 module.exports = {
   extractSubmission,
+  confirmExtraction,
   generateFeedback,
+  approveFeedback,
   normalizeExtraction,
-  normalizeFeedbackResponse
+  normalizeFeedbackResponse,
+  validateQuestionarioContraAvaliacao
 };

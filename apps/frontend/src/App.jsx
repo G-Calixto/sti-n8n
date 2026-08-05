@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import ExtractionReview from './components/ExtractionReview';
+import PedagogicalQuestionnaire from './components/PedagogicalQuestionnaire';
+import FeedbackReview from './components/FeedbackReview';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
@@ -13,7 +16,13 @@ const initialState = {
   consentAccepted: false,
   consentScrolledToEnd: false,
   submission: null,
+  extractionDraft: null,
+  avaliacaoOficial: null,
+  intencaoProfessorAtual: '',
   feedback: null,
+  feedbackDraft: '',
+  feedbackAprovado: false,
+  feedbackActionBusy: false,
   error: null
 };
 
@@ -60,8 +69,6 @@ export default function App() {
   const [imagePreviewUrl, setImagePreviewUrl] = useState('');
 
   const api = useMemo(() => API_BASE_URL.replace(/\/$/, ''), []);
-  const isBusy = state.view === 'extraindo_imagem' || state.view === 'gerando_feedback';
-  const hasSubmittedContext = Boolean(state.form.image || state.form.correctAnswer);
 
   useEffect(() => {
     if (!state.form.image) {
@@ -105,7 +112,7 @@ export default function App() {
     }));
   }
 
-  async function submitExtraction(event) {
+  function goToRevisaoSubmissao(event) {
     event.preventDefault();
 
     if (!state.consentAccepted) {
@@ -118,6 +125,10 @@ export default function App() {
       return;
     }
 
+    setState((current) => ({ ...current, view: 'revisao_submissao', error: null }));
+  }
+
+  async function confirmSubmissionAndExtract() {
     const formData = new FormData();
     formData.append('correctAnswer', state.form.correctAnswer);
     formData.append('consentAccepted', String(state.consentAccepted));
@@ -133,50 +144,144 @@ export default function App() {
       const data = await readApiResponse(response);
       setState((current) => ({
         ...current,
-        view: 'extracao_concluida',
+        view: 'revisao_extracao',
         submission: data,
-        feedback: null,
+        extractionDraft: { ...data.extracao },
+        avaliacaoOficial: null,
         error: null
       }));
     } catch (error) {
       setState((current) => ({
         ...current,
-        view: current.submission ? 'extracao_concluida' : 'erro',
+        view: 'revisao_submissao',
         error: error.message
       }));
     }
   }
 
-  async function requestFeedback() {
-    if (!state.submission?.submission_id) return;
+  function handleExtractionFieldChange(field, value) {
+    setState((current) => ({
+      ...current,
+      extractionDraft: { ...current.extractionDraft, [field]: value },
+      avaliacaoOficial: null
+    }));
+  }
 
-    setState((current) => ({ ...current, view: 'gerando_feedback', error: null }));
+  async function confirmExtraction() {
+    setState((current) => ({ ...current, view: 'salvando_revisao', error: null }));
+
+    try {
+      const response = await fetch(`${api}/api/submissions/${state.submission.submission_id}/extraction`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ extracao: state.extractionDraft })
+      });
+      const data = await readApiResponse(response);
+      setState((current) => ({
+        ...current,
+        view: 'revisao_extracao',
+        extractionDraft: data.extracao,
+        avaliacaoOficial: data.avaliacao,
+        error: null
+      }));
+    } catch (error) {
+      setState((current) => ({ ...current, view: 'revisao_extracao', error: error.message }));
+    }
+  }
+
+  function goToQuestionario() {
+    setState((current) => ({ ...current, view: 'questionario', error: null }));
+  }
+
+  async function submitQuestionario(questionario, intencaoProfessor) {
+    setState((current) => ({
+      ...current,
+      view: 'gerando_feedback',
+      error: null,
+      intencaoProfessorAtual: intencaoProfessor
+    }));
 
     try {
       const response = await fetch(`${api}/api/submissions/${state.submission.submission_id}/feedback`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionario,
+          intencao_professor: intencaoProfessor,
+          regenerar: false,
+          instrucao_regeneracao: ''
+        })
       });
       const data = await readApiResponse(response);
       setState((current) => ({
         ...current,
         view: 'feedback_concluido',
         feedback: data,
+        feedbackDraft: data.avaliacao.feedback_aluno,
+        feedbackAprovado: false,
         error: null
       }));
     } catch (error) {
-      setState((current) => ({
-        ...current,
-        view: current.submission ? 'extracao_concluida' : 'erro',
-        error: error.message
-      }));
+      setState((current) => ({ ...current, view: 'questionario', error: error.message }));
     }
   }
 
-  const extraction = state.submission?.extracao;
-  const preliminary = state.submission?.avaliacao_preliminar;
-  const feedback = state.feedback?.avaliacao;
-  const shouldShowContext = hasSubmittedContext && state.view !== 'inicio' && state.view !== 'consentimento_lgpd';
-  const shouldShowExtraction = extraction && !feedback;
+  function handleFeedbackChange(text) {
+    setState((current) => ({ ...current, feedbackDraft: text }));
+  }
+
+  async function aprovarFeedback(textoFinal) {
+    setState((current) => ({ ...current, feedbackActionBusy: true, error: null }));
+
+    try {
+      const response = await fetch(`${api}/api/submissions/${state.submission.submission_id}/feedback/approval`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback_aluno: textoFinal })
+      });
+      const data = await readApiResponse(response);
+      setState((current) => ({
+        ...current,
+        feedbackActionBusy: false,
+        feedbackAprovado: true,
+        feedbackDraft: data.avaliacao.feedback_aluno,
+        error: null
+      }));
+    } catch (error) {
+      setState((current) => ({ ...current, feedbackActionBusy: false, error: error.message }));
+    }
+  }
+
+  async function pedirNovaVersao(instrucaoRegeneracao) {
+    setState((current) => ({ ...current, feedbackActionBusy: true, error: null }));
+
+    try {
+      const response = await fetch(`${api}/api/submissions/${state.submission.submission_id}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionario: {},
+          intencao_professor: state.intencaoProfessorAtual,
+          regenerar: true,
+          instrucao_regeneracao: instrucaoRegeneracao
+        })
+      });
+      const data = await readApiResponse(response);
+      setState((current) => ({
+        ...current,
+        feedbackActionBusy: false,
+        feedback: data,
+        feedbackDraft: data.avaliacao.feedback_aluno,
+        feedbackAprovado: false,
+        error: null
+      }));
+    } catch (error) {
+      // preserva o feedback anterior visivel em caso de falha na regeneracao
+      setState((current) => ({ ...current, feedbackActionBusy: false, error: error.message }));
+    }
+  }
+
+  const shouldShowContext = Boolean(state.submission);
 
   return (
     <main className="app-shell">
@@ -367,8 +472,8 @@ export default function App() {
           </div>
         )}
 
-        {['formulario_submissao', 'extraindo_imagem', 'erro'].includes(state.view) && !state.submission && (
-          <form className="stack" onSubmit={submitExtraction}>
+        {state.view === 'formulario_submissao' && (
+          <form className="stack" onSubmit={goToRevisaoSubmissao}>
             <h2>Enviar questão</h2>
             <label>
               Imagem da questão
@@ -388,11 +493,37 @@ export default function App() {
                 onChange={(event) => updateForm('correctAnswer', event.target.value)}
               />
             </label>
-            <button type="submit" disabled={isBusy}>
-              Enviar para extração
-            </button>
-            {state.view === 'extraindo_imagem' && <Loading text="Extraindo enunciado da questão..." />}
+            <button type="submit">Revisar antes de enviar</button>
           </form>
+        )}
+
+        {['revisao_submissao', 'extraindo_imagem'].includes(state.view) && (
+          <div className="stack">
+            <h2>Revisar antes de enviar</h2>
+            {imagePreviewUrl ? (
+              <img className="image-preview" src={imagePreviewUrl} alt="Preview da imagem enviada" />
+            ) : (
+              <p className="muted">Nenhuma imagem selecionada.</p>
+            )}
+            <Field label="Resposta correta informada" value={state.form.correctAnswer} />
+
+            {state.view === 'extraindo_imagem' ? (
+              <Loading text="Extraindo enunciado da questão..." />
+            ) : (
+              <div className="button-row">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setState((current) => ({ ...current, view: 'formulario_submissao' }))}
+                >
+                  Voltar
+                </button>
+                <button type="button" onClick={confirmSubmissionAndExtract}>
+                  Confirmar e enviar
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {state.error && (
@@ -413,39 +544,51 @@ export default function App() {
           </section>
         )}
 
-        {shouldShowExtraction && (
+        {['revisao_extracao', 'salvando_revisao'].includes(state.view) && (
           <section className="result-section">
-            <h2>Extração da imagem</h2>
-            <Field label="Enunciado" value={extraction.enunciado} />
-            <Field label="Desenvolvimento do aluno" value={extraction.desenvolvimento_aluno} />
-            <Field label="Resposta do aluno" value={extraction.resposta_aluno} />
-            <Field label="Legibilidade" value={extraction.legibilidade} />
-            <Field label="Observações" value={extraction.observacoes} />
-            <Field label="Resultado preliminar" value={preliminary?.resposta_correta ? 'correta' : 'incorreta'} />
-
-            {state.view === 'gerando_feedback' && <Loading text="Gerando feedback pedagógico..." />}
-
-            {!feedback && state.view !== 'gerando_feedback' && (
-              <div className="button-row">
-                <button type="button" className="secondary-button" onClick={resetFlow}>
-                  Reiniciar processo
-                </button>
-                <button type="button" onClick={requestFeedback} disabled={isBusy}>
-                  Visualizar feedback
-                </button>
-              </div>
-            )}
+            <ExtractionReview
+              extracao={state.extractionDraft}
+              avaliacao={state.avaliacaoOficial}
+              isSaving={state.view === 'salvando_revisao'}
+              onFieldChange={handleExtractionFieldChange}
+              onConfirm={confirmExtraction}
+              onContinuar={goToQuestionario}
+            />
           </section>
         )}
 
-        {feedback && (
+        {state.view === 'questionario' && (
           <section className="result-section">
-            <h2>Feedback pedagógico</h2>
-            <Field label="Feedback para o aluno" value={feedback.feedback_aluno} />
-            <Field label="Dica de próxima ação" value={feedback.dica_proxima_acao} />
-            <button type="button" onClick={resetFlow}>
-              Reiniciar processo
-            </button>
+            <PedagogicalQuestionnaire
+              tipo={state.avaliacaoOficial?.status}
+              onSubmit={submitQuestionario}
+              isSubmitting={false}
+            />
+          </section>
+        )}
+
+        {state.view === 'gerando_feedback' && (
+          <section className="result-section">
+            <Loading text="Gerando feedback pedagógico..." />
+          </section>
+        )}
+
+        {state.view === 'feedback_concluido' && (
+          <section className="result-section">
+            <FeedbackReview
+              feedbackAluno={state.feedbackDraft}
+              feedbackGeneration={state.feedback?.feedback_generation}
+              aprovado={state.feedbackAprovado}
+              isSubmitting={state.feedbackActionBusy}
+              onChange={handleFeedbackChange}
+              onAprovar={aprovarFeedback}
+              onPedirNovaVersao={pedirNovaVersao}
+            />
+            <div className="button-row">
+              <button type="button" className="secondary-button" onClick={resetFlow}>
+                Reiniciar processo
+              </button>
+            </div>
           </section>
         )}
       </section>

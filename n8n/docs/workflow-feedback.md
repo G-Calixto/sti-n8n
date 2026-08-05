@@ -45,6 +45,8 @@ O backend deve enviar o objeto `extracao` inteiro dentro do body.
 
 ## Resposta esperada
 
+`feedback_aluno` e o unico campo que o backend exige de fato. Os prompts atuais em `docs/prompts/` retornam so `{"feedback_aluno": ""}` — os demais campos abaixo (`tipo_erro`, `resumo_erro`, `feedback_professor`, `dica_proxima_acao`, `confianca_feedback`) sao **legado**: podem vir vazios, ausentes ou nao confiaveis.
+
 ```json
 {
   "ok": true,
@@ -59,8 +61,8 @@ O backend deve enviar o objeto `extracao` inteiro dentro do body.
     "tipo_erro": "nenhum",
     "resumo_erro": "",
     "feedback_aluno": "texto para o aluno",
-    "feedback_professor": "texto para o professor",
-    "dica_proxima_acao": "proxima acao sugerida",
+    "feedback_professor": "legado, nao garantido",
+    "dica_proxima_acao": "legado, nao garantido - o prompt atual nao gera mais este campo",
     "confianca_feedback": 0.95
   },
   "entrada": {

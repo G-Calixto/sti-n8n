@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { evaluateAnswer, normalizeAnswer } = require('../src/services/evaluationService');
-const { normalizeFeedbackResponse } = require('../src/services/submissionService');
+const { normalizeFeedbackResponse, validateQuestionarioContraAvaliacao } = require('../src/services/submissionService');
 
 assert.strictEqual(normalizeAnswer(' 5  '), '5');
 assert.strictEqual(normalizeAnswer('a   b'), 'a b');
@@ -56,5 +56,42 @@ const embeddedFeedback = normalizeFeedbackResponse({
 assert.strictEqual(embeddedFeedback.ok, true);
 assert.strictEqual(embeddedFeedback.avaliacao.confianca_feedback, 0);
 assert.strictEqual(embeddedFeedback.avaliacao.feedback_aluno, 'Muito bem!');
+
+const minimalFeedback = normalizeFeedbackResponse({
+  submission_id: 'sub_2',
+  feedback_aluno: 'Texto minimo, so com feedback_aluno.'
+});
+
+assert.strictEqual(minimalFeedback.ok, true);
+assert.strictEqual(minimalFeedback.avaliacao.feedback_aluno, 'Texto minimo, so com feedback_aluno.');
+assert.strictEqual(minimalFeedback.avaliacao.acertou, undefined);
+assert.strictEqual(minimalFeedback.avaliacao.status_avaliacao, undefined);
+
+const avaliacaoCorreta = { resposta_correta: true, status: 'correta' };
+const avaliacaoIncorreta = { resposta_correta: false, status: 'incorreta' };
+
+assert.doesNotThrow(() => validateQuestionarioContraAvaliacao({
+  tipo: 'correta',
+  caso_correto: { acerto_esperado: 'sim_esperado' },
+  caso_incorreto: null
+}, avaliacaoCorreta));
+
+assert.doesNotThrow(() => validateQuestionarioContraAvaliacao({
+  tipo: 'incorreta',
+  caso_correto: null,
+  caso_incorreto: { desempenho_geral: 'mediano', frequencia_erro: 'as_vezes', natureza_erro: 'calculo_execucao' }
+}, avaliacaoIncorreta));
+
+assert.throws(() => validateQuestionarioContraAvaliacao({
+  tipo: 'correta',
+  caso_correto: { acerto_esperado: 'sim_esperado' },
+  caso_incorreto: null
+}, avaliacaoIncorreta), (error) => error.code === 'questionario_incompatible');
+
+assert.throws(() => validateQuestionarioContraAvaliacao({
+  tipo: 'incorreta',
+  caso_correto: null,
+  caso_incorreto: null
+}, avaliacaoIncorreta), (error) => error.code === 'questionario_incompatible');
 
 console.log('evaluationService tests passed');
