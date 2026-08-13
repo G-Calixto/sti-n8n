@@ -60,6 +60,8 @@ O corpo consolida a extração revisada, a avaliação oficial calculada pelo ba
 
 `avaliacao.feedback_aluno` é o único campo que o backend exige de fato. Os prompts atuais em `docs/prompts/` retornam só `{"feedback_aluno": ""}` — os demais campos abaixo (`acertou`, `status_avaliacao`, `tipo_erro`, `resumo_erro`, `feedback_professor`, `dica_proxima_acao`, `confianca_feedback`) são **legado**: vêm `null` quando a IA não os retorna (o node `Tratar resposta da IA` não fabrica mais texto artificial para eles — antes gerava frases sintéticas tipo "Muito bem! Sua resposta está correta.", isso foi removido).
 
+**Atenção ao formato de saída do node "Gerar feedback Gemini":** com `simplify` no padrão (`true`, não sobrescrito nos parâmetros), o node retorna o candidate já "desembrulhado" (`{ content: { parts: [{ text: "..." }] }, finishReason, ... }`), não o formato bruto `{ candidates: [...] }`. A função `getText()` em `Tratar resposta da IA` precisa reconhecer esse formato (`value.content.parts`) além do formato bruto — sem isso, `raw_ai_response` fica vazio, `feedback_aluno` cai no fallback `""`, e o backend rejeita a resposta com `invalid_feedback_response` mesmo com a execução do n8n aparentando sucesso (nada lança exceção). Isso já está corrigido no node atual; se o node for reescrito do zero, replicar esse caso (o parser do workflow de extração, `Code - Limpar Resposta Gemini1`, já cobre o mesmo formato via `jsonGemini.content?.parts?.[0]?.text`).
+
 ```json
 {
   "ok": true,
@@ -102,7 +104,7 @@ O node "Append row in sheet" grava, além dos campos de extração e avaliação
 
 Colunas novas em relação à versão anterior: `feedback_generation`, `status_avaliacao_oficial`, `resposta_correta`, `tipo_prompt`, `entrada_valida`, `questionario_tipo`, `momento_conteudo`, `estrategias_usadas`, `reacao_ao_erro`, `relacao_com_matematica`, `receptividade_feedback`, `acerto_esperado`, `desempenho_geral`, `frequencia_erro`, `natureza_erro`, `intencao_professor`, `regeneracao_solicitada`, `regeneracao_instrucao`, `prompt_feedback`.
 
-O node agora tem `retryOnFail: true` e `onError: "continueErrorOutput"` (igual ao node equivalente no workflow de extração) — uma falha no Sheets não deve mais impedir a resposta ao backend.
+O node roda **depois** de "Respond to Webhook" (`Tratar resposta da IA -> Respond to Webhook -> Append row in sheet`), não antes — a resposta ao backend nunca fica esperando o Sheets nem é afetada por uma falha nele. Tem também `retryOnFail: true` e `onError: "continueErrorOutput"` como reforço extra.
 
 Antes de usar o feedback em fluxo real, conferir:
 
