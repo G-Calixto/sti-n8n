@@ -1,5 +1,5 @@
 {
-  "name": "Extração - STI",
+  "name": "Extração - STI otimizado",
   "nodes": [
     {
       "parameters": {
@@ -9,6 +9,12 @@
               "id": "e059f69c-7667-4f54-bba6-f2eda6f48eb6",
               "name": "=submissionId",
               "value": "={{ $json.body.submissionId }}",
+              "type": "string"
+            },
+            {
+              "id": "8c32b793-19b1-4259-a4f9-f25b67c4ba80",
+              "name": "teacher_id",
+              "value": "={{ $json.body.teacherName }}",
               "type": "string"
             },
             {
@@ -32,14 +38,16 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        208,
-        0
+        -160,
+        96
       ],
-      "id": "4fbd1665-ae70-4bb9-864e-8f3c24c1e27e",
-      "name": "Organizar Entrada"
+      "id": "32a5734c-3df2-4904-b4a0-8fbb231c8b83",
+      "name": "Organizar Entrada1"
     },
     {
       "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.resposta_backend }}",
         "options": {
           "responseCode": 200
         }
@@ -47,70 +55,16 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1632,
-        -160
+        880,
+        -16
       ],
-      "id": "4c3cfc7d-f413-4b9e-9cac-d4d84c516d29",
-      "name": "Respond to Webhook"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "edd725cc-c517-4315-8677-f2bb7bd30bce",
-              "leftValue": "={{ $json.submissionId }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty",
-                "singleValue": true
-              }
-            },
-            {
-              "id": "f413c795-9bc6-44e1-8bf6-e4615382eeac",
-              "leftValue": "={{ $json.correct_answer }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty",
-                "singleValue": true
-              }
-            },
-            {
-              "id": "a08c3ff4-8619-4d20-bc88-b369a2067e13",
-              "leftValue": "",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        624,
-        0
-      ],
-      "id": "1a97d369-a33d-49bf-8ebd-6e4e519255e3",
-      "name": "If"
+      "id": "f5ac9f24-9347-4fb7-b4e2-d19c26aa9e6b",
+      "name": "Respond to Webhook1"
     },
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "extracao",
+        "path": "extracao-otimizado",
         "responseMode": "responseNode",
         "options": {
           "binaryPropertyName": "image"
@@ -119,12 +73,12 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        0,
-        0
+        -368,
+        96
       ],
-      "id": "883c0c25-42a2-487a-ad94-fdde57f8d1ce",
-      "name": "Webhook Entrada",
-      "webhookId": "b4f76e00-a81b-438a-b914-8ba87a753c3f"
+      "id": "9df48cdf-64ff-4e8b-9c5f-beeadc682ad2",
+      "name": "Webhook Entrada1",
+      "webhookId": "80231650-506a-4c38-bf7f-e0bd1395392b"
     },
     {
       "parameters": {
@@ -144,11 +98,11 @@
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1.1,
       "position": [
-        832,
-        0
+        464,
+        96
       ],
-      "id": "423b6a5a-98e0-48ab-9d4d-5ced934c51bc",
-      "name": "Gemini Analisa Imagem",
+      "id": "b3dc96cd-98af-454b-be3f-a3f1b8a8adcb",
+      "name": "Gemini Analisa Imagem1",
       "credentials": {
         "googlePalmApi": {
           "id": "NiQQgdOXPcLsEQIT",
@@ -188,7 +142,9 @@
             "legibilidade": "={{ $json.legibilidade }}",
             "confianca_extracao": "={{ $json.confianca_extracao }}",
             "observacoes": "={{ $json.observacoes }}",
-            "erro_parse": "={{ $json.erro_parse }}"
+            "erro_parse": "={{ $json.erro_parse }}",
+            "ok": "={{ $json.ok }}",
+            "resposta_backend_json": "={{ $json.resposta_backend_json }}"
           },
           "matchingColumns": [],
           "schema": [
@@ -308,6 +264,24 @@
               "display": true,
               "type": "string",
               "canBeUsedToMatch": true
+            },
+            {
+              "id": "ok",
+              "displayName": "ok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resposta_backend_json",
+              "displayName": "resposta_backend_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
             }
           ],
           "attemptToConvertTypes": false,
@@ -318,11 +292,11 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        1248,
-        0
+        880,
+        224
       ],
-      "id": "dd79ba76-4dfa-4582-9406-9cb44f3919a8",
-      "name": "Append row in sheet",
+      "id": "22e333c4-2578-4d75-bbdd-5f0415676317",
+      "name": "Append row in sheet1",
       "retryOnFail": true,
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -334,180 +308,63 @@
     },
     {
       "parameters": {
-        "jsCode": "const dadosLimpos = $('Code - Limpar Resposta Gemini').first().json;\n\nreturn [\n  {\n    json: dadosLimpos.resposta_backend,\n  },\n];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1456,
-        0
-      ],
-      "id": "31db8835-3522-4d96-b4a6-a5090dad2de2",
-      "name": "Code - Resposta Backend"
-    },
-    {
-      "parameters": {
-        "jsCode": "const current = $input.first();\n\n// O nome precisa ser igual ao nome do seu node Webhook.\n// Se o seu Webhook tiver outro nome, troque aqui.\nconst webhook = $('Webhook Entrada').first();\n\nconst MODELO_GEMINI = 'gemini';\n\nfunction removerMarkdown(texto) {\n  return String(texto ?? '')\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/```$/i, '')\n    .replace(/```json/gi, '')\n    .replace(/```/g, '')\n    .trim();\n}\n\nfunction tentarParseJson(texto) {\n  let limpo = removerMarkdown(texto);\n\n  // Caso venha assim: text:{ ... }\n  limpo = limpo.replace(/^text\\s*:\\s*/i, '').trim();\n\n  // Primeira tentativa: parse direto\n  try {\n    return JSON.parse(limpo);\n  } catch (error) {}\n\n  // Segunda tentativa: pegar apenas o trecho entre { e }\n  const inicio = limpo.indexOf('{');\n  const fim = limpo.lastIndexOf('}');\n\n  if (inicio !== -1 && fim !== -1 && fim > inicio) {\n    const trechoJson = limpo.slice(inicio, fim + 1);\n\n    try {\n      return JSON.parse(trechoJson);\n    } catch (error) {}\n\n    // Terceira tentativa: caso existam \\n literais no texto\n    try {\n      return JSON.parse(\n        trechoJson\n          .replace(/\\\\n/g, '\\n')\n          .replace(/\\\\t/g, '\\t')\n      );\n    } catch (error) {}\n  }\n\n  throw new Error('A resposta do Gemini não contém JSON válido.');\n}\n\nfunction encontrarStringsComJson(valor, caminhos = [], caminhoAtual = '$', visitados = new WeakSet()) {\n  if (valor === null || valor === undefined) {\n    return caminhos;\n  }\n\n  if (typeof valor === 'string') {\n    if (\n      valor.includes('{') ||\n      valor.includes('enunciado') ||\n      valor.includes('resposta_aluno') ||\n      valor.includes('confianca_extracao')\n    ) {\n      caminhos.push({\n        caminho: caminhoAtual,\n        valor,\n      });\n    }\n\n    return caminhos;\n  }\n\n  if (typeof valor !== 'object') {\n    return caminhos;\n  }\n\n  if (visitados.has(valor)) {\n    return caminhos;\n  }\n\n  visitados.add(valor);\n\n  if (Array.isArray(valor)) {\n    valor.forEach((item, index) => {\n      encontrarStringsComJson(item, caminhos, `${caminhoAtual}[${index}]`, visitados);\n    });\n  } else {\n    for (const chave of Object.keys(valor)) {\n      encontrarStringsComJson(valor[chave], caminhos, `${caminhoAtual}.${chave}`, visitados);\n    }\n  }\n\n  return caminhos;\n}\n\nfunction extrairRespostaGemini(jsonGemini) {\n  // Caso raro: o próprio JSON já seja a extração\n  if (\n    jsonGemini &&\n    typeof jsonGemini === 'object' &&\n    (\n      jsonGemini.enunciado ||\n      jsonGemini.desenvolvimento_aluno ||\n      jsonGemini.resposta_aluno\n    )\n  ) {\n    return jsonGemini;\n  }\n\n  // Caminhos comuns\n  const candidatosDiretos = [\n    jsonGemini.text,\n    jsonGemini.output,\n    jsonGemini.response,\n    jsonGemini.content,\n    jsonGemini.message?.content,\n    jsonGemini.candidates?.[0]?.content?.parts?.[0]?.text,\n    jsonGemini.content?.parts?.[0]?.text,\n    jsonGemini.parts?.[0]?.text,\n    jsonGemini.data?.text,\n    jsonGemini.result?.text,\n  ];\n\n  for (const candidato of candidatosDiretos) {\n    if (typeof candidato === 'string' && candidato.trim()) {\n      try {\n        return tentarParseJson(candidato);\n      } catch (error) {}\n    }\n\n    if (\n      candidato &&\n      typeof candidato === 'object' &&\n      (\n        candidato.enunciado ||\n        candidato.desenvolvimento_aluno ||\n        candidato.resposta_aluno\n      )\n    ) {\n      return candidato;\n    }\n  }\n\n  // Busca profunda: procura qualquer string dentro da resposta que pareça conter JSON\n  const stringsEncontradas = encontrarStringsComJson(jsonGemini);\n\n  for (const item of stringsEncontradas) {\n    try {\n      return tentarParseJson(item.valor);\n    } catch (error) {}\n  }\n\n  throw new Error('A resposta do Gemini não contém JSON válido.');\n}\n\nconst webhookJson = webhook.json.body ?? webhook.json;\n\nconst submissionId =\n  webhookJson.submission_id ??\n  webhookJson.submissionId ??\n  webhookJson.id ??\n  null;\n\nlet parseOk = true;\nlet erroParse = null;\nlet extracao = {};\nlet debug = null;\n\ntry {\n  extracao = extrairRespostaGemini(current.json);\n} catch (error) {\n  parseOk = false;\n  erroParse = error.message;\n\n  const stringsEncontradas = encontrarStringsComJson(current.json);\n\n  debug = {\n    chaves_disponiveis_no_gemini: Object.keys(current.json ?? {}),\n    caminhos_com_texto_encontrados: stringsEncontradas.map(item => item.caminho),\n    primeira_string_encontrada: stringsEncontradas[0]?.valor?.slice(0, 500) ?? null,\n  };\n\n  extracao = {};\n}\n\nconst extracaoNormalizada = {\n  enunciado: String(extracao.enunciado ?? ''),\n  desenvolvimento_aluno: String(extracao.desenvolvimento_aluno ?? ''),\n  resposta_aluno: String(extracao.resposta_aluno ?? ''),\n  legibilidade: String(extracao.legibilidade ?? ''),\n  confianca_extracao:\n    extracao.confianca_extracao === undefined || extracao.confianca_extracao === null\n      ? null\n      : Number(extracao.confianca_extracao),\n  observacoes: String(extracao.observacoes ?? ''),\n};\n\nconst statusN8n = parseOk\n  ? 'json_extraido_com_sucesso'\n  : 'erro_parse_json';\n\nconst respostaBackend = {\n  ok: parseOk,\n  submission_id: submissionId,\n  fluxo: 'extracao_imagem',\n  status_n8n: statusN8n,\n  provedor_ia: 'gemini',\n  modelo: MODELO_GEMINI,\n  extracao: extracaoNormalizada,\n  erro_parse: erroParse,\n};\n\nreturn [\n  {\n    json: {\n      timestamp: new Date().toISOString(),\n      submission_id: submissionId,\n      parse_ok: parseOk,\n      status_n8n: statusN8n,\n      provedor_ia: 'gemini',\n      modelo: MODELO_GEMINI,\n      enunciado: extracaoNormalizada.enunciado,\n      desenvolvimento_aluno: extracaoNormalizada.desenvolvimento_aluno,\n      resposta_aluno: extracaoNormalizada.resposta_aluno,\n      legibilidade: extracaoNormalizada.legibilidade,\n      confianca_extracao: extracaoNormalizada.confianca_extracao,\n      observacoes: extracaoNormalizada.observacoes,\n      erro_parse: erroParse,\n      debug_parse: debug,\n      resposta_backend: respostaBackend,\n    },\n  },\n];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1040,
-        0
-      ],
-      "id": "4494b065-7e17-4d65-b35c-20f0ef9505aa",
-      "name": "Code - Limpar Resposta Gemini"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "a1333365-4b76-4e1b-ac20-3ae6bd623b04",
-              "leftValue": "={{ true }}",
-              "rightValue": "={{ true }}",
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        416,
-        0
-      ],
-      "id": "52303665-a81c-483e-87f6-e420537c4b40",
-      "name": "IF - Usar Mock?"
-    },
-    {
-      "parameters": {
-        "jsCode": "const webhook = $('Webhook Entrada').first();\nconst webhookJson = webhook.json.body ?? webhook.json;\n\nconst submissionId =\n  webhookJson.submission_id ??\n  webhookJson.submissionId ??\n  webhookJson.id ??\n  `sub_mock_${Date.now()}`;\n\nreturn [\n  {\n    json: {\n      ok: true,\n      submission_id: submissionId,\n      fluxo: \"extracao_imagem\",\n      status_n8n: \"mock_extracao_sem_gemini\",\n      provedor_ia: \"mock\",\n      modelo: \"sem_gemini\",\n\n      extracao: {\n        enunciado: \"02) Pedro tinha 4 moedas em sua carteira. Ele encontrou mais 5 moedas no chão enquanto caminhava pelo parque. Quantas moedas Pedro tem ao todo agora?\",\n        desenvolvimento_aluno: \"4+5=9\",\n        resposta_aluno: \"9\",\n        legibilidade: \"alta\",\n        confianca_extracao: 1,\n        observacoes: \"Resposta fixa de teste gerada no n8n sem usar Gemini.\"\n      },\n\n      erro_parse: null\n    }\n  }\n];"
+        "jsCode": "const current = $input.first();\nconst webhook = $('Webhook Entrada1').first();\n\nconst MODELO_GEMINI = 'gemini-2.5-flash';\n\nfunction removerMarkdown(texto) {\n  return String(texto ?? '')\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/```$/i, '')\n    .replace(/```json/gi, '')\n    .replace(/```/g, '')\n    .trim();\n}\n\nfunction tentarParseJson(texto) {\n  let limpo = removerMarkdown(texto);\n\n  // Caso venha assim: text:{ ... }\n  limpo = limpo.replace(/^text\\s*:\\s*/i, '').trim();\n\n  try {\n    return JSON.parse(limpo);\n  } catch (error) {}\n\n  const inicio = limpo.indexOf('{');\n  const fim = limpo.lastIndexOf('}');\n\n  if (inicio !== -1 && fim !== -1 && fim > inicio) {\n    const trechoJson = limpo.slice(inicio, fim + 1);\n\n    try {\n      return JSON.parse(trechoJson);\n    } catch (error) {}\n\n    try {\n      return JSON.parse(\n        trechoJson\n          .replace(/\\\\n/g, '\\n')\n          .replace(/\\\\t/g, '\\t')\n      );\n    } catch (error) {}\n  }\n\n  throw new Error('A resposta do Gemini não contém JSON válido.');\n}\n\nfunction encontrarStringsComJson(valor, caminhos = [], caminhoAtual = '$', visitados = new WeakSet()) {\n  if (valor === null || valor === undefined) return caminhos;\n\n  if (typeof valor === 'string') {\n    const texto = valor.trim();\n\n    if (\n      texto.includes('{') ||\n      texto.includes('enunciado') ||\n      texto.includes('resposta_aluno') ||\n      texto.includes('confianca_extracao')\n    ) {\n      caminhos.push({ caminho: caminhoAtual, valor: texto });\n    }\n\n    return caminhos;\n  }\n\n  if (typeof valor !== 'object') return caminhos;\n  if (visitados.has(valor)) return caminhos;\n\n  visitados.add(valor);\n\n  if (Array.isArray(valor)) {\n    valor.forEach((item, index) => {\n      encontrarStringsComJson(item, caminhos, `${caminhoAtual}[${index}]`, visitados);\n    });\n  } else {\n    for (const chave of Object.keys(valor)) {\n      encontrarStringsComJson(valor[chave], caminhos, `${caminhoAtual}.${chave}`, visitados);\n    }\n  }\n\n  return caminhos;\n}\n\nfunction extrairRespostaGemini(jsonGemini) {\n  if (\n    jsonGemini &&\n    typeof jsonGemini === 'object' &&\n    (\n      jsonGemini.enunciado !== undefined ||\n      jsonGemini.desenvolvimento_aluno !== undefined ||\n      jsonGemini.resposta_aluno !== undefined\n    )\n  ) {\n    return jsonGemini;\n  }\n\n  const candidatosDiretos = [\n    jsonGemini.text,\n    jsonGemini.output,\n    jsonGemini.response,\n    jsonGemini.content,\n    jsonGemini.message?.content,\n    jsonGemini.candidates?.[0]?.content?.parts?.[0]?.text,\n    jsonGemini.content?.parts?.[0]?.text,\n    jsonGemini.parts?.[0]?.text,\n    jsonGemini.data?.text,\n    jsonGemini.result?.text,\n  ];\n\n  for (const candidato of candidatosDiretos) {\n    if (typeof candidato === 'string' && candidato.trim()) {\n      try {\n        return tentarParseJson(candidato);\n      } catch (error) {}\n    }\n\n    if (\n      candidato &&\n      typeof candidato === 'object' &&\n      (\n        candidato.enunciado !== undefined ||\n        candidato.desenvolvimento_aluno !== undefined ||\n        candidato.resposta_aluno !== undefined\n      )\n    ) {\n      return candidato;\n    }\n  }\n\n  const stringsEncontradas = encontrarStringsComJson(jsonGemini);\n\n  for (const item of stringsEncontradas) {\n    try {\n      return tentarParseJson(item.valor);\n    } catch (error) {}\n  }\n\n  throw new Error('A resposta do Gemini não contém JSON válido.');\n}\n\nfunction normalizarLegibilidade(valor) {\n  const legibilidade = String(valor ?? '').trim().toLowerCase();\n\n  if (['alta', 'media', 'baixa'].includes(legibilidade)) {\n    return legibilidade;\n  }\n\n  if (legibilidade === 'média') {\n    return 'media';\n  }\n\n  return '';\n}\n\nfunction limitarConfianca(valor) {\n  const numero = Number(valor);\n\n  if (!Number.isFinite(numero)) {\n    return null;\n  }\n\n  return Math.max(0, Math.min(1, numero));\n}\n\nconst webhookJson = webhook.json.body ?? webhook.json;\n\nconst submissionId =\n  webhookJson.submission_id ??\n  webhookJson.submissionId ??\n  webhookJson.id ??\n  null;\n\nlet parseOk = true;\nlet erroParse = null;\nlet extracao = {};\nlet debug = null;\n\ntry {\n  extracao = extrairRespostaGemini(current.json);\n} catch (error) {\n  parseOk = false;\n  erroParse = error.message;\n\n  const stringsEncontradas = encontrarStringsComJson(current.json);\n\n  debug = {\n    chaves_disponiveis_no_gemini: Object.keys(current.json ?? {}),\n    caminhos_com_texto_encontrados: stringsEncontradas.map(item => item.caminho),\n    primeira_string_encontrada: stringsEncontradas[0]?.valor?.slice(0, 500) ?? null,\n  };\n\n  extracao = {};\n}\n\nconst extracaoNormalizada = {\n  enunciado: String(extracao.enunciado ?? '').trim(),\n  desenvolvimento_aluno: String(extracao.desenvolvimento_aluno ?? '').trim(),\n  resposta_aluno: String(extracao.resposta_aluno ?? '').trim(),\n  legibilidade: normalizarLegibilidade(extracao.legibilidade),\n  confianca_extracao: limitarConfianca(extracao.confianca_extracao),\n  observacoes: String(extracao.observacoes ?? '').trim(),\n};\n\nconst temConteudoMinimo = Boolean(\n  extracaoNormalizada.enunciado ||\n  extracaoNormalizada.desenvolvimento_aluno ||\n  extracaoNormalizada.resposta_aluno\n);\n\nconst ok = parseOk && temConteudoMinimo;\n\nconst statusN8n = ok\n  ? 'json_extraido_com_sucesso'\n  : parseOk\n    ? 'extracao_sem_conteudo_minimo'\n    : 'erro_parse_json';\n\nconst respostaBackend = {\n  ok,\n  submission_id: submissionId,\n  fluxo: 'extracao_imagem',\n  status_n8n: statusN8n,\n  provedor_ia: 'gemini',\n  modelo: MODELO_GEMINI,\n  extracao: extracaoNormalizada,\n  erro_parse: erroParse,\n};\n\nreturn [\n  {\n    json: {\n      timestamp: new Date().toISOString(),\n      submission_id: submissionId,\n      parse_ok: parseOk,\n      ok,\n      status_n8n: statusN8n,\n      provedor_ia: 'gemini',\n      modelo: MODELO_GEMINI,\n\n      enunciado: extracaoNormalizada.enunciado,\n      desenvolvimento_aluno: extracaoNormalizada.desenvolvimento_aluno,\n      resposta_aluno: extracaoNormalizada.resposta_aluno,\n      legibilidade: extracaoNormalizada.legibilidade,\n      confianca_extracao: extracaoNormalizada.confianca_extracao,\n      observacoes: extracaoNormalizada.observacoes,\n      erro_parse: erroParse,\n\n      // Mantém informações úteis para debug, mas sem travar a resposta ao backend.\n      debug_parse: debug,\n      resposta_backend: respostaBackend,\n      resposta_backend_json: JSON.stringify(respostaBackend),\n    },\n  },\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         672,
-        -144
+        96
       ],
-      "id": "a5fc855d-bff6-4919-abfa-5335ef6f891e",
-      "name": "Code - Mock Extração"
+      "id": "8e0728e0-af45-4677-aeaf-a37cde85a1b9",
+      "name": "Code - Limpar Resposta Gemini1"
     }
   ],
   "pinData": {},
   "connections": {
-    "Organizar Entrada": {
+    "Organizar Entrada1": {
       "main": [
         [
           {
-            "node": "IF - Usar Mock?",
+            "node": "Gemini Analisa Imagem1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "If": {
+    "Webhook Entrada1": {
       "main": [
         [
           {
-            "node": "Gemini Analisa Imagem",
+            "node": "Organizar Entrada1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Webhook Entrada": {
+    "Gemini Analisa Imagem1": {
       "main": [
         [
           {
-            "node": "Organizar Entrada",
+            "node": "Code - Limpar Resposta Gemini1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Gemini Analisa Imagem": {
+    "Code - Limpar Resposta Gemini1": {
       "main": [
         [
           {
-            "node": "Code - Limpar Resposta Gemini",
+            "node": "Respond to Webhook1",
             "type": "main",
             "index": 0
-          }
-        ]
-      ]
-    },
-    "Append row in sheet": {
-      "main": [
-        [
+          },
           {
-            "node": "Code - Resposta Backend",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code - Resposta Backend": {
-      "main": [
-        [
-          {
-            "node": "Respond to Webhook",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code - Limpar Resposta Gemini": {
-      "main": [
-        [
-          {
-            "node": "Append row in sheet",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "IF - Usar Mock?": {
-      "main": [
-        [
-          {
-            "node": "Code - Mock Extração",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "If",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code - Mock Extração": {
-      "main": [
-        [
-          {
-            "node": "Respond to Webhook",
+            "node": "Append row in sheet1",
             "type": "main",
             "index": 0
           }
@@ -521,11 +378,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "4b2bbfea-6e19-4e5f-b9ec-fcd2c59224b3",
+  "versionId": "41039452-599d-4c67-ab9f-43cc83beead3",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "9f061e4acc2c30d5aa6505c57e0224305f5bd22fb481a81e15974d882e60757b"
   },
-  "id": "rFkliKSCW6svJ98P",
+  "id": "QWtOTfTYuSUwDPh2",
   "tags": []
 }

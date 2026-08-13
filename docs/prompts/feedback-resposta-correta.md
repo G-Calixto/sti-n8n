@@ -22,14 +22,14 @@ Observação importante: a resposta correta esperada é uma informação interna
 
 ## Contexto do aluno
 
-Este conteúdo {{quando_conteudo_foi_trabalhado}} e foi ensinado por meio de {{como_conteudo_foi_trabalhado}}.
+Este conteúdo {{momento_conteudo}} e foi ensinado por meio de {{estrategias_usadas}}.
 
-O acerto {{expectativa_do_acerto}}.
+O acerto {{acerto_esperado}}.
 
-Perfil emocional: esse aluno {{reacao_ao_erro}} quando erra; tem {{relacao_com_matematica}} em relação à matemática; e {{receptividade_ao_feedback}} ao feedback.
+Perfil emocional: esse aluno {{reacao_ao_erro}} quando erra; tem {{relacao_com_matematica}} em relação à matemática; e {{receptividade_feedback}} ao feedback.
 
 Informação adicional do professor, se houver:
-{{observacao_professor}}
+{{intencao_professor}}
 
 ## Estrutura obrigatória do feedback
 

@@ -22,19 +22,19 @@ Observação importante: a resposta correta esperada é uma informação interna
 
 ## Contexto do aluno
 
-Este conteúdo {{quando_conteudo_foi_trabalhado}} e foi ensinado por meio de {{como_conteudo_foi_trabalhado}}.
+Este conteúdo {{momento_conteudo}} e foi ensinado por meio de {{estrategias_usadas}}.
 
 Desempenho geral em matemática:
-{{desempenho_geral_matematica}}
+{{desempenho_geral}}
 
-Este tipo de erro {{frequencia_do_erro}}.
+Este tipo de erro {{frequencia_erro}}.
 
-O erro parece ser de {{tipo_erro_percebido}}.
+O erro parece ser de {{natureza_erro}}.
 
-Perfil emocional: esse aluno {{reacao_ao_erro}} quando erra; tem {{relacao_com_matematica}} em relação à matemática; e {{receptividade_ao_feedback}} ao feedback.
+Perfil emocional: esse aluno {{reacao_ao_erro}} quando erra; tem {{relacao_com_matematica}} em relação à matemática; e {{receptividade_feedback}} ao feedback.
 
 Informação adicional do professor, se houver:
-{{observacao_professor}}
+{{intencao_professor}}
 
 ## Estrutura obrigatória do feedback
 

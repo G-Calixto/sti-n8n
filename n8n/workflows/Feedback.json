@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst body = input.body ?? input;\nconst extracao = body.extracao ?? {};\n\nconst submission_id = String(body.submission_id ?? \"\").trim();\nconst correct_answer = String(body.correct_answer ?? \"\").trim();\n\nconst enunciado = String(extracao.enunciado ?? \"\").trim();\nconst desenvolvimento_aluno = String(extracao.desenvolvimento_aluno ?? \"\").trim();\nconst resposta_aluno = String(extracao.resposta_aluno ?? \"\").trim();\nconst legibilidade = String(extracao.legibilidade ?? \"\").trim();\nconst confianca_extracao = Number(extracao.confianca_extracao ?? 0);\nconst observacoes_extracao = String(extracao.observacoes ?? \"\").trim();\n\nfunction normalizarResposta(valor) {\n  return String(valor ?? \"\")\n    .trim()\n    .replace(\",\", \".\")\n    .replace(/[^\\d.-]/g, \"\");\n}\n\nconst resposta_aluno_normalizada = normalizarResposta(resposta_aluno);\nconst correct_answer_normalizada = normalizarResposta(correct_answer);\n\nconst resposta_correta =\n  resposta_aluno_normalizada !== \"\" &&\n  resposta_aluno_normalizada === correct_answer_normalizada;\n\nconst tipo_prompt = resposta_correta\n  ? \"resposta_correta\"\n  : \"resposta_incorreta\";\n\nconst entrada_valida = Boolean(\n  submission_id &&\n  correct_answer &&\n  enunciado &&\n  resposta_aluno\n);\n\nconst prompt_base = `\nVocê é um Sistema Tutor Inteligente para matemática do Ensino Fundamental 1.\n\nDados da questão:\n- Enunciado: ${enunciado}\n- Resposta correta esperada: ${correct_answer}\n- Desenvolvimento do aluno: ${desenvolvimento_aluno || \"não informado\"}\n- Resposta final do aluno: ${resposta_aluno || \"não informada\"}\n- Legibilidade da extração: ${legibilidade || \"não informada\"}\n- Confiança da extração: ${confianca_extracao}\n- Observações da extração: ${observacoes_extracao || \"nenhuma\"}\n\nRegras gerais:\n1. Não invente informações.\n2. Use linguagem adequada para criança do Ensino Fundamental 1 no feedback do aluno.\n3. O feedback do professor pode ser um pouco mais técnico, mas deve ser objetivo.\n4. Retorne APENAS JSON válido.\n5. Não use markdown.\n6. Não use crases.\n`;\n\nconst prompt_resposta_correta = `\n${prompt_base}\n\nA resposta final do aluno está CORRETA.\n\nSua tarefa:\n- Confirmar que o aluno acertou.\n- Explicar de forma simples por que a resposta está correta.\n- Reforçar positivamente o raciocínio.\n- Se o desenvolvimento estiver incompleto, mencione isso de forma leve para o professor, sem penalizar o aluno.\n- Sugerir uma próxima ação para consolidar o aprendizado.\n\nFormato obrigatório:\n{\n  \"acertou\": true,\n  \"status_avaliacao\": \"correta\",\n  \"tipo_erro\": \"nenhum\",\n  \"resumo_erro\": \"\",\n  \"feedback_aluno\": \"\",\n  \"feedback_professor\": \"\",\n  \"dica_proxima_acao\": \"\",\n  \"confianca_feedback\": 0.95\n}\n`;\n\nconst prompt_resposta_incorreta = `\n${prompt_base}\n\nA resposta final do aluno está INCORRETA.\n\nSua tarefa:\n- Explicar o erro provável de forma simples.\n- Identificar se o problema parece ser de cálculo, interpretação, procedimento incompleto, resposta ausente ou outro.\n- Não dar um feedback punitivo.\n- Ajudar o aluno a perceber o caminho correto.\n- Sugerir uma próxima ação para o professor trabalhar esse erro.\n\nUse estes valores:\n- status_avaliacao: \"incorreta\", \"parcial\" ou \"indefinida\"\n- tipo_erro: \"calculo\", \"interpretacao\", \"procedimento_incompleto\", \"resposta_ausente\", \"extracao_duvidosa\" ou \"outro\"\n\nFormato obrigatório:\n{\n  \"acertou\": false,\n  \"status_avaliacao\": \"incorreta\",\n  \"tipo_erro\": \"\",\n  \"resumo_erro\": \"\",\n  \"feedback_aluno\": \"\",\n  \"feedback_professor\": \"\",\n  \"dica_proxima_acao\": \"\",\n  \"confianca_feedback\": 0.90\n}\n`;\n\nconst prompt_feedback = resposta_correta\n  ? prompt_resposta_correta\n  : prompt_resposta_incorreta;\n\nreturn [\n  {\n    json: {\n      timestamp: new Date().toISOString(),\n      submission_id,\n      correct_answer,\n      correct_answer_normalizada,\n      enunciado,\n      desenvolvimento_aluno,\n      resposta_aluno,\n      resposta_aluno_normalizada,\n      resposta_correta,\n      tipo_prompt,\n      legibilidade,\n      confianca_extracao,\n      observacoes_extracao,\n      entrada_valida,\n      prompt_feedback,\n      provedor_ia: \"gemini\",\n      modelo_feedback: \"gemini\"\n    }\n  }\n];"
+        "jsCode": "const input = $input.first().json;\nconst body = input.body ?? input;\nconst extracao = body.extracao ?? {};\nconst avaliacao = body.avaliacao ?? {};\nconst questionario = body.questionario ?? {};\nconst contexto = questionario.contexto_pedagogico ?? {};\nconst perfil = questionario.perfil_emocional ?? {};\nconst casoCorreto = questionario.caso_correto ?? {};\nconst casoIncorreto = questionario.caso_incorreto ?? {};\nconst regeneracao = body.regeneracao ?? {};\n\nconst submission_id = String(body.submission_id ?? \"\").trim();\nconst correct_answer = String(body.correct_answer ?? \"\").trim();\nconst feedback_generation = Number(body.feedback_generation ?? 1);\n\nconst enunciado = String(extracao.enunciado ?? \"\").trim();\nconst desenvolvimento_aluno = String(extracao.desenvolvimento_aluno ?? \"\").trim();\nconst resposta_aluno = String(extracao.resposta_aluno ?? \"\").trim();\nconst legibilidade = String(extracao.legibilidade ?? \"\").trim();\nconst confianca_extracao = Number(extracao.confianca_extracao ?? 0);\nconst observacoes_extracao = String(extracao.observacoes ?? \"\").trim();\n\n// Resultado oficial (correto/incorreto) ja vem calculado pelo backend\n// (evaluationService.js). Este node NAO recalcula - so le e usa para\n// escolher o prompt certo. Duplicar esse calculo aqui foi o bug original.\nconst status_avaliacao_oficial = String(avaliacao.status ?? \"\").trim();\nconst resposta_correta = Boolean(avaliacao.resposta_correta);\nconst tipo_prompt = status_avaliacao_oficial === \"correta\" ? \"resposta_correta\" : \"resposta_incorreta\";\n\nconst intencao_professor = String(body.intencao_professor ?? \"\").trim();\nconst regeneracao_solicitada = Boolean(regeneracao.solicitada);\nconst regeneracao_instrucao = String(regeneracao.instrucao ?? \"\").trim();\n\nconst questionario_tipo = String(questionario.tipo ?? \"\").trim();\nconst momento_conteudo = String(contexto.momento_conteudo ?? \"\").trim();\nconst estrategias_usadas_lista = Array.isArray(contexto.estrategias_usadas) ? contexto.estrategias_usadas : [];\nconst reacao_ao_erro = String(perfil.reacao_ao_erro ?? \"\").trim();\nconst relacao_com_matematica = String(perfil.relacao_com_matematica ?? \"\").trim();\nconst receptividade_feedback = String(perfil.receptividade_feedback ?? \"\").trim();\nconst acerto_esperado = String(casoCorreto.acerto_esperado ?? \"\").trim();\nconst desempenho_geral = String(casoIncorreto.desempenho_geral ?? \"\").trim();\nconst frequencia_erro = String(casoIncorreto.frequencia_erro ?? \"\").trim();\nconst natureza_erro = String(casoIncorreto.natureza_erro ?? \"\").trim();\n\n// Traducao dos slugs do questionario (docs/novo-fluxo/contratos.md secao 3)\n// para frases naturais em portugues, para uso dentro do prompt.\nconst FRASES = {\n  momento_conteudo: {\n    recente: \"foi trabalhado recentemente\",\n    ja_trabalhado: \"já foi bastante trabalhado anteriormente\"\n  },\n  estrategia: {\n    explicacao_direta: \"exposição direta (explicação no quadro)\",\n    resolucao_em_grupo: \"resolução de problemas em grupo\",\n    atividade_pratica: \"atividade prática/experimental\"\n  },\n  acerto_esperado: {\n    sim_esperado: \"era o esperado para este aluno\",\n    sim_com_dificuldade_usual: \"era esperado, embora ele costume ter dificuldade nesse tipo de questão\",\n    nao_surpresa_positiva: \"não era esperado — foi uma surpresa positiva\"\n  },\n  desempenho_geral: {\n    abaixo_da_media: \"abaixo da média da turma\",\n    mediano: \"na média da turma\",\n    acima_da_media: \"acima da média da turma\"\n  },\n  frequencia_erro: {\n    frequente: \"é frequente para este aluno\",\n    as_vezes: \"acontece às vezes\",\n    primeira_vez: \"é a primeira vez que acontece\"\n  },\n  natureza_erro: {\n    compreensao_conceito: \"compreensão do conceito\",\n    distracao: \"distração\",\n    interpretacao_enunciado: \"interpretação do enunciado\",\n    calculo_execucao: \"cálculo/execução\"\n  },\n  reacao_ao_erro: {\n    frustracao: \"fica frustrado(a)\",\n    indiferenca: \"fica indiferente\",\n    busca_compreender: \"busca entender o que aconteceu\",\n    ansiedade: \"fica ansioso(a)\",\n    variavel: \"reage de forma variável, depende do momento\"\n  },\n  relacao_com_matematica: {\n    confianca: \"tem confiança em relação à matemática\",\n    neutra: \"tem uma relação neutra com a matemática\",\n    resistencia: \"tem resistência em relação à matemática\",\n    ansiedade: \"demonstra ansiedade em relação à matemática\"\n  },\n  receptividade_feedback: {\n    boa: \"costuma acolher bem o feedback\",\n    depende_da_abordagem: \"recebe bem o feedback dependendo de como ele é dado\",\n    tende_a_resistir: \"tende a resistir ao feedback\"\n  }\n};\n\nfunction traduzir(mapa, chave) {\n  return (mapa && mapa[chave]) || \"não informado\";\n}\n\nconst frase_momento_conteudo = traduzir(FRASES.momento_conteudo, momento_conteudo);\nconst frase_estrategias = estrategias_usadas_lista.length\n  ? estrategias_usadas_lista.map((valor) => traduzir(FRASES.estrategia, valor)).join(\", \")\n  : \"não informado\";\nconst frase_reacao_ao_erro = traduzir(FRASES.reacao_ao_erro, reacao_ao_erro);\nconst frase_relacao_com_matematica = traduzir(FRASES.relacao_com_matematica, relacao_com_matematica);\nconst frase_receptividade_feedback = traduzir(FRASES.receptividade_feedback, receptividade_feedback);\nconst frase_acerto_esperado = traduzir(FRASES.acerto_esperado, acerto_esperado);\nconst frase_desempenho_geral = traduzir(FRASES.desempenho_geral, desempenho_geral);\nconst frase_frequencia_erro = traduzir(FRASES.frequencia_erro, frequencia_erro);\nconst frase_natureza_erro = traduzir(FRASES.natureza_erro, natureza_erro);\n\nconst intencao_professor_texto = intencao_professor || \"nenhuma\";\n\nconst bloco_base = [\n  \"Você é um Sistema Tutor Inteligente para matemática do Ensino Fundamental 1.\",\n  \"\",\n  \"Dados da questão:\",\n  \"- Enunciado: \" + enunciado,\n  \"- Resposta correta esperada: \" + correct_answer,\n  \"- Desenvolvimento do aluno: \" + (desenvolvimento_aluno || \"não informado\"),\n  \"- Resposta final do aluno: \" + (resposta_aluno || \"não informada\"),\n  \"- Legibilidade da extração: \" + (legibilidade || \"não informada\"),\n  \"- Confiança da extração: \" + confianca_extracao,\n  \"- Observações da extração: \" + (observacoes_extracao || \"nenhuma\")\n].join(\"\\n\");\n\nconst bloco_regras = [\n  \"Regras gerais:\",\n  \"1. Não invente informações.\",\n  \"2. Use linguagem simples, respeitosa e encorajadora, adequada para criança do Ensino Fundamental 1.\",\n  \"3. Escreva diretamente para o aluno.\",\n  \"4. Não use tom excessivamente infantilizado.\",\n  \"5. Adapte o tom ao perfil emocional informado abaixo.\",\n  \"6. O feedback deve ter no máximo 10 linhas.\",\n  \"7. Não use markdown nem listas numeradas no texto do feedback.\",\n  \"8. Retorne APENAS JSON válido, sem markdown, sem crases.\"\n].join(\"\\n\");\n\nconst contexto_aluno_correta = [\n  \"Contexto do aluno:\",\n  \"- Este conteúdo \" + frase_momento_conteudo + \", ensinado por meio de \" + frase_estrategias + \".\",\n  \"- O acerto \" + frase_acerto_esperado + \".\",\n  \"- Perfil emocional: esse aluno \" + frase_reacao_ao_erro + \" quando erra; \" + frase_relacao_com_matematica + \"; e \" + frase_receptividade_feedback + \".\",\n  \"- Informação adicional do professor: \" + intencao_professor_texto + \".\"\n].join(\"\\n\");\n\nconst contexto_aluno_incorreta = [\n  \"Contexto do aluno:\",\n  \"- Este conteúdo \" + frase_momento_conteudo + \", ensinado por meio de \" + frase_estrategias + \".\",\n  \"- Desempenho geral em matemática: \" + frase_desempenho_geral + \".\",\n  \"- Este tipo de erro \" + frase_frequencia_erro + \".\",\n  \"- O erro parece ser de \" + frase_natureza_erro + \" — trate isso como hipótese pedagógica, não certeza absoluta.\",\n  \"- Perfil emocional: esse aluno \" + frase_reacao_ao_erro + \" quando erra; \" + frase_relacao_com_matematica + \"; e \" + frase_receptividade_feedback + \".\",\n  \"- Informação adicional do professor: \" + intencao_professor_texto + \".\"\n].join(\"\\n\");\n\nconst prompt_resposta_correta = [\n  bloco_base,\n  \"\",\n  \"A resposta final do aluno está CORRETA. Não revele explicitamente a resposta correta no feedback — ela é só uma referência interna.\",\n  \"\",\n  contexto_aluno_correta,\n  \"\",\n  \"Sua tarefa:\",\n  \"- Reconhecer o acerto de forma específica (não apenas \\\"parabéns\\\").\",\n  \"- Mencionar o que o aluno demonstrou compreender ou fazer bem.\",\n  \"- Reconhecer o esforço e propor um pequeno desafio para continuar avançando.\",\n  \"\",\n  bloco_regras,\n  \"\",\n  \"Formato obrigatório:\",\n  \"{\",\n  \"  \\\"feedback_aluno\\\": \\\"\\\"\",\n  \"}\"\n].join(\"\\n\");\n\nconst prompt_resposta_incorreta = [\n  bloco_base,\n  \"\",\n  \"A resposta final do aluno está INCORRETA. Não revele explicitamente a resposta correta no feedback — ela é só uma referência interna. Não resolva toda a questão pelo aluno.\",\n  \"\",\n  contexto_aluno_incorreta,\n  \"\",\n  \"Sua tarefa:\",\n  \"- Reconhecer o esforço/tentativa do aluno.\",\n  \"- Orientar sobre onde o raciocínio pode ter se desviado, sem tom punitivo.\",\n  \"- Encorajar e orientar o próximo passo, sem entregar a resposta.\",\n  \"\",\n  bloco_regras,\n  \"\",\n  \"Formato obrigatório:\",\n  \"{\",\n  \"  \\\"feedback_aluno\\\": \\\"\\\"\",\n  \"}\"\n].join(\"\\n\");\n\nconst bloco_regeneracao = regeneracao_solicitada\n  ? [\n      \"\",\n      \"\",\n      \"Esta é uma REGERAÇÃO de um feedback já gerado antes. O professor pediu ajustes específicos:\",\n      \"\\\"\" + (regeneracao_instrucao || \"sem instrução específica — apenas gerar uma nova variação\") + \"\\\"\",\n      \"\",\n      \"Gere uma nova versão do feedback seguindo essa instrução, mantendo todas as regras acima.\"\n    ].join(\"\\n\")\n  : \"\";\n\nconst prompt_feedback =\n  (status_avaliacao_oficial === \"correta\" ? prompt_resposta_correta : prompt_resposta_incorreta) +\n  bloco_regeneracao;\n\nconst entrada_valida = Boolean(\n  submission_id &&\n  correct_answer &&\n  enunciado &&\n  resposta_aluno &&\n  status_avaliacao_oficial\n);\n\nreturn [\n  {\n    json: {\n      timestamp: new Date().toISOString(),\n      submission_id,\n      feedback_generation,\n      correct_answer,\n      enunciado,\n      desenvolvimento_aluno,\n      resposta_aluno,\n      legibilidade,\n      confianca_extracao,\n      observacoes_extracao,\n      status_avaliacao_oficial,\n      resposta_correta,\n      tipo_prompt,\n      questionario_tipo,\n      momento_conteudo,\n      estrategias_usadas: estrategias_usadas_lista.join(\", \"),\n      reacao_ao_erro,\n      relacao_com_matematica,\n      receptividade_feedback,\n      acerto_esperado,\n      desempenho_geral,\n      frequencia_erro,\n      natureza_erro,\n      intencao_professor,\n      regeneracao_solicitada,\n      regeneracao_instrucao,\n      entrada_valida,\n      prompt_feedback,\n      provedor_ia: \"gemini\",\n      modelo_feedback: \"gemini\"\n    }\n  }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -66,7 +66,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const original = $('Preparar dados').first().json;\nconst aiOutput = $input.first().json;\n\nfunction getText(value) {\n  if (!value) return \"\";\n\n  if (typeof value === \"string\") {\n    return value;\n  }\n\n  if (Array.isArray(value)) {\n    return value.map(getText).filter(Boolean).join(\"\\n\");\n  }\n\n  if (typeof value === \"object\") {\n    const priorityKeys = [\n      \"text\",\n      \"output\",\n      \"response\",\n      \"content\",\n      \"message\",\n      \"result\"\n    ];\n\n    for (const key of priorityKeys) {\n      if (value[key]) {\n        const found = getText(value[key]);\n        if (found) return found;\n      }\n    }\n\n    if (value.candidates?.[0]?.content?.parts) {\n      return getText(value.candidates[0].content.parts);\n    }\n  }\n\n  return \"\";\n}\n\nfunction extractJson(raw) {\n  if (!raw) return null;\n\n  let cleaned = String(raw)\n    .replace(/```json/gi, \"\")\n    .replace(/```/g, \"\")\n    .trim();\n\n  const start = cleaned.indexOf(\"{\");\n  const end = cleaned.lastIndexOf(\"}\");\n\n  if (start === -1 || end === -1 || end <= start) {\n    return null;\n  }\n\n  const jsonText = cleaned.slice(start, end + 1);\n\n  try {\n    return JSON.parse(jsonText);\n  } catch (error) {\n    return null;\n  }\n}\n\nconst raw_ai_response = getText(aiOutput);\nconst feedback = extractJson(raw_ai_response);\n\nconst parse_ok = feedback !== null;\n\nconst respostaCorreta =\n  String(original.resposta_aluno).trim() === String(original.correct_answer).trim();\n\nconst acertou =\n  typeof feedback?.acertou === \"boolean\"\n    ? feedback.acertou\n    : respostaCorreta;\n\nconst status_avaliacao =\n  feedback?.status_avaliacao ??\n  (respostaCorreta ? \"correta\" : \"indefinida\");\n\nconst tipo_erro =\n  feedback?.tipo_erro ??\n  (respostaCorreta ? \"nenhum\" : \"outro\");\n\nconst resumo_erro = feedback?.resumo_erro ?? \"\";\n\nconst feedback_aluno =\n  feedback?.feedback_aluno ??\n  (respostaCorreta\n    ? \"Muito bem! Sua resposta está correta.\"\n    : \"Não foi possível gerar um feedback personalizado agora.\");\n\nconst feedback_professor =\n  feedback?.feedback_professor ??\n  (parse_ok\n    ? \"\"\n    : \"A IA não retornou um JSON válido. Verifique a resposta bruta da IA no log.\");\n\nconst dica_proxima_acao =\n  feedback?.dica_proxima_acao ??\n  (respostaCorreta\n    ? \"Propor uma questão parecida para reforçar o aprendizado.\"\n    : \"Revisar o raciocínio do aluno e tentar novamente com mediação.\");\n\nconst confianca_feedback = Number(feedback?.confianca_feedback ?? 0);\n\nconst ok = parse_ok && Boolean(feedback_aluno) && Boolean(feedback_professor);\n\nconst status_n8n = ok\n  ? \"feedback_gerado_com_sucesso\"\n  : \"erro_feedback_ia\";\n\nconst resposta_backend = {\n  ok,\n  submission_id: original.submission_id,\n  fluxo: \"geracao_feedback\",\n  status_n8n,\n  provedor_ia: original.provedor_ia,\n  modelo: original.modelo_feedback,\n  avaliacao: {\n    acertou,\n    status_avaliacao,\n    tipo_erro,\n    resumo_erro,\n    feedback_aluno,\n    feedback_professor,\n    dica_proxima_acao,\n    confianca_feedback\n  },\n  entrada: {\n    correct_answer: original.correct_answer,\n    enunciado: original.enunciado,\n    desenvolvimento_aluno: original.desenvolvimento_aluno,\n    resposta_aluno: original.resposta_aluno,\n    legibilidade: original.legibilidade,\n    confianca_extracao: original.confianca_extracao,\n    observacoes_extracao: original.observacoes_extracao\n  },\n  erro: ok ? null : {\n    parse_ok,\n    mensagem: parse_ok\n      ? \"Feedback incompleto retornado pela IA.\"\n      : \"A resposta da IA não contém JSON válido.\"\n  }\n};\n\nreturn [\n  {\n    json: {\n      timestamp: original.timestamp,\n      submission_id: original.submission_id,\n      correct_answer: original.correct_answer,\n      enunciado: original.enunciado,\n      desenvolvimento_aluno: original.desenvolvimento_aluno,\n      resposta_aluno: original.resposta_aluno,\n      legibilidade: original.legibilidade,\n      confianca_extracao: original.confianca_extracao,\n      observacoes_extracao: original.observacoes_extracao,\n\n      parse_ok,\n      ok,\n      status_n8n,\n      provedor_ia: original.provedor_ia,\n      modelo: original.modelo_feedback,\n\n      acertou,\n      status_avaliacao,\n      tipo_erro,\n      resumo_erro,\n      feedback_aluno,\n      feedback_professor,\n      dica_proxima_acao,\n      confianca_feedback,\n\n      raw_ai_response,\n      resposta_backend_json: JSON.stringify(resposta_backend),\n      resposta_backend\n    }\n  }\n];"
+        "jsCode": "const original = $('Preparar dados').first().json;\nconst aiOutput = $input.first().json;\n\nfunction getText(value) {\n  if (!value) return \"\";\n\n  if (typeof value === \"string\") {\n    return value;\n  }\n\n  if (Array.isArray(value)) {\n    return value.map(getText).filter(Boolean).join(\"\\n\");\n  }\n\n  if (typeof value === \"object\") {\n    const priorityKeys = [\n      \"text\",\n      \"output\",\n      \"response\",\n      \"content\",\n      \"message\",\n      \"result\"\n    ];\n\n    for (const key of priorityKeys) {\n      if (value[key]) {\n        const found = getText(value[key]);\n        if (found) return found;\n      }\n    }\n\n    if (value.candidates?.[0]?.content?.parts) {\n      return getText(value.candidates[0].content.parts);\n    }\n  }\n\n  return \"\";\n}\n\nfunction extractJson(raw) {\n  if (!raw) return null;\n\n  let cleaned = String(raw)\n    .replace(/```json/gi, \"\")\n    .replace(/```/g, \"\")\n    .trim();\n\n  const start = cleaned.indexOf(\"{\");\n  const end = cleaned.lastIndexOf(\"}\");\n\n  if (start === -1 || end === -1 || end <= start) {\n    return null;\n  }\n\n  const jsonText = cleaned.slice(start, end + 1);\n\n  try {\n    return JSON.parse(jsonText);\n  } catch (error) {\n    return null;\n  }\n}\n\nconst raw_ai_response = getText(aiOutput);\nconst feedback = extractJson(raw_ai_response);\n\nconst parse_ok = feedback !== null;\n\nconst feedback_aluno = feedback?.feedback_aluno ?? \"\";\n\n// Unico campo realmente exigido pelo backend. Antes exigia tambem\n// feedback_professor, que os prompts atuais nunca retornam - isso fazia\n// \"ok\" ser sempre falso mesmo em geracoes bem-sucedidas.\nconst ok = parse_ok && Boolean(feedback_aluno);\n\n// Campos legado: usam o que a IA retornar; se ausentes, ficam null em vez\n// de texto fabricado (o frontend novo nao exibe esses campos mesmo).\nconst acertou =\n  typeof feedback?.acertou === \"boolean\" ? feedback.acertou : original.resposta_correta;\n\nconst status_avaliacao = feedback?.status_avaliacao ?? original.status_avaliacao_oficial ?? null;\nconst tipo_erro = feedback?.tipo_erro ?? null;\nconst resumo_erro = feedback?.resumo_erro ?? null;\nconst feedback_professor = feedback?.feedback_professor ?? null;\nconst dica_proxima_acao = feedback?.dica_proxima_acao ?? null;\nconst confianca_feedback =\n  feedback?.confianca_feedback !== undefined ? Number(feedback.confianca_feedback) : null;\n\nconst status_n8n = ok ? \"feedback_gerado_com_sucesso\" : \"erro_feedback_ia\";\n\nconst resposta_backend = {\n  ok,\n  submission_id: original.submission_id,\n  fluxo: \"geracao_feedback\",\n  status_n8n,\n  feedback_generation: original.feedback_generation,\n  provedor_ia: original.provedor_ia,\n  modelo: original.modelo_feedback,\n  avaliacao: {\n    feedback_aluno,\n    acertou,\n    status_avaliacao,\n    tipo_erro,\n    resumo_erro,\n    feedback_professor,\n    dica_proxima_acao,\n    confianca_feedback\n  },\n  entrada: {\n    correct_answer: original.correct_answer,\n    enunciado: original.enunciado,\n    desenvolvimento_aluno: original.desenvolvimento_aluno,\n    resposta_aluno: original.resposta_aluno,\n    legibilidade: original.legibilidade,\n    confianca_extracao: original.confianca_extracao,\n    observacoes_extracao: original.observacoes_extracao\n  },\n  erro: ok\n    ? null\n    : {\n        parse_ok,\n        mensagem: parse_ok\n          ? \"A IA nao retornou feedback_aluno.\"\n          : \"A resposta da IA nao contem JSON valido.\"\n      }\n};\n\nreturn [\n  {\n    json: {\n      ...original,\n      parse_ok,\n      ok,\n      status_n8n,\n      modelo: original.modelo_feedback,\n      acertou,\n      status_avaliacao,\n      tipo_erro,\n      resumo_erro,\n      feedback_aluno,\n      feedback_professor,\n      dica_proxima_acao,\n      confianca_feedback,\n      raw_ai_response,\n      resposta_backend_json: JSON.stringify(resposta_backend),\n      resposta_backend\n    }\n  }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -96,7 +96,51 @@
         },
         "columns": {
           "mappingMode": "defineBelow",
-          "value": {},
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "submission_id": "={{ $json.submission_id }}",
+            "correct_answer": "={{ $json.correct_answer }}",
+            "enunciado": "={{ $json.enunciado }}",
+            "desenvolvimento_aluno": "={{ $json.desenvolvimento_aluno }}",
+            "resposta_aluno": "={{ $json.resposta_aluno }}",
+            "legibilidade": "={{ $json.legibilidade }}",
+            "confianca_extracao": "={{ $json.confianca_extracao }}",
+            "observacoes_extracao": "={{ $json.observacoes_extracao }}",
+            "parse_ok": "={{ $json.parse_ok }}",
+            "ok": "={{ $json.ok }}",
+            "status_n8n": "={{ $json.status_n8n }}",
+            "provedor_ia": "={{ $json.provedor_ia }}",
+            "modelo": "={{ $json.modelo }}",
+            "acertou": "={{ $json.acertou }}",
+            "status_avaliacao": "={{ $json.status_avaliacao }}",
+            "tipo_erro": "={{ $json.tipo_erro }}",
+            "resumo_erro": "={{ $json.resumo_erro }}",
+            "feedback_aluno": "={{ $json.feedback_aluno }}",
+            "feedback_professor": "={{ $json.feedback_professor }}",
+            "dica_proxima_acao": "={{ $json.dica_proxima_acao }}",
+            "confianca_feedback": "={{ $json.confianca_feedback }}",
+            "raw_ai_response": "={{ $json.raw_ai_response }}",
+            "resposta_backend_json": "={{ $json.resposta_backend_json }}",
+            "feedback_generation": "={{ $json.feedback_generation }}",
+            "status_avaliacao_oficial": "={{ $json.status_avaliacao_oficial }}",
+            "resposta_correta": "={{ $json.resposta_correta }}",
+            "tipo_prompt": "={{ $json.tipo_prompt }}",
+            "entrada_valida": "={{ $json.entrada_valida }}",
+            "questionario_tipo": "={{ $json.questionario_tipo }}",
+            "momento_conteudo": "={{ $json.momento_conteudo }}",
+            "estrategias_usadas": "={{ $json.estrategias_usadas }}",
+            "reacao_ao_erro": "={{ $json.reacao_ao_erro }}",
+            "relacao_com_matematica": "={{ $json.relacao_com_matematica }}",
+            "receptividade_feedback": "={{ $json.receptividade_feedback }}",
+            "acerto_esperado": "={{ $json.acerto_esperado }}",
+            "desempenho_geral": "={{ $json.desempenho_geral }}",
+            "frequencia_erro": "={{ $json.frequencia_erro }}",
+            "natureza_erro": "={{ $json.natureza_erro }}",
+            "intencao_professor": "={{ $json.intencao_professor }}",
+            "regeneracao_solicitada": "={{ $json.regeneracao_solicitada }}",
+            "regeneracao_instrucao": "={{ $json.regeneracao_instrucao }}",
+            "prompt_feedback": "={{ $json.prompt_feedback }}"
+          },
           "matchingColumns": [],
           "schema": [
             {
@@ -338,6 +382,196 @@
               "type": "string",
               "canBeUsedToMatch": true,
               "removed": false
+            },
+            {
+              "id": "feedback_generation",
+              "displayName": "feedback_generation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status_avaliacao_oficial",
+              "displayName": "status_avaliacao_oficial",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "resposta_correta",
+              "displayName": "resposta_correta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tipo_prompt",
+              "displayName": "tipo_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "entrada_valida",
+              "displayName": "entrada_valida",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "questionario_tipo",
+              "displayName": "questionario_tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "momento_conteudo",
+              "displayName": "momento_conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estrategias_usadas",
+              "displayName": "estrategias_usadas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "reacao_ao_erro",
+              "displayName": "reacao_ao_erro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "relacao_com_matematica",
+              "displayName": "relacao_com_matematica",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "receptividade_feedback",
+              "displayName": "receptividade_feedback",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "acerto_esperado",
+              "displayName": "acerto_esperado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "desempenho_geral",
+              "displayName": "desempenho_geral",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "frequencia_erro",
+              "displayName": "frequencia_erro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "natureza_erro",
+              "displayName": "natureza_erro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "intencao_professor",
+              "displayName": "intencao_professor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "regeneracao_solicitada",
+              "displayName": "regeneracao_solicitada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "regeneracao_instrucao",
+              "displayName": "regeneracao_instrucao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "prompt_feedback",
+              "displayName": "prompt_feedback",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
             }
           ],
           "attemptToConvertTypes": false,
@@ -358,7 +592,9 @@
           "id": "x3IZiJj3pHJoOLNl",
           "name": "Google Sheets account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
