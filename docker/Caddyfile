@@ -1,0 +1,24 @@
+# Usado apenas na Fase 2 (com dominio + HTTPS), junto de docker-compose.tls.yml.
+# O Caddy emite e renova certificados Let's Encrypt sozinho.
+
+# Para receber avisos de expiracao do Let's Encrypt, descomente e preencha:
+# {
+# 	email seu-email@exemplo.com
+# }
+
+{$APP_DOMAIN} {
+	encode gzip
+	request_body {
+		max_size 20MB
+	}
+	# O proprio nginx do container frontend ja separa / e /api.
+	reverse_proxy frontend:80
+}
+
+{$N8N_DOMAIN} {
+	encode gzip
+	request_body {
+		max_size 20MB
+	}
+	reverse_proxy n8n:5678
+}

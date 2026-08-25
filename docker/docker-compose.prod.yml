@@ -1,3 +1,20 @@
+# Stack de producao (droplet). Sobe backend + frontend + n8n na mesma rede.
+#
+#   docker compose --env-file .env -f docker/docker-compose.prod.yml up -d --build
+#
+# O "--env-file .env" nao e opcional: sem ele o Compose procura o .env dentro de
+# docker/ (a pasta do arquivo compose) e as variaveis ${...} ficam vazias.
+#
+# O frontend (nginx) e o unico servico exposto na porta 80 e faz proxy de /api
+# para o backend. O n8n fica na 5678 apenas para o editor -- proteja com firewall.
+# Ver docs/deploy.md.
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   backend:
     build:
@@ -5,38 +22,55 @@ services:
       dockerfile: docker/backend.Dockerfile
     env_file:
       - ../.env
+    environment:
+      - NODE_ENV=production
     restart: unless-stopped
-    ports:
-      - "3001:3001"
+    # Sem "ports": o backend so e alcancavel pela rede interna do Compose,
+    # atraves do proxy /api do frontend.
+    expose:
+      - "3001"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3001/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging: *default-logging
 
   frontend:
     build:
       context: ..
       dockerfile: docker/frontend.Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3001}
+        # "/" => o App.jsx monta URLs relativas (/api/...) na mesma origem.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/}
     restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
       - backend
+    logging: *default-logging
 
   n8n:
-    image: n8nio/n8n:latest
+    # Fixe a versao. "latest" pode subir uma major nova e rodar migrations
+    # irreversiveis no n8n_data/ -- nao da para voltar depois.
+    image: "n8nio/n8n:${N8N_IMAGE_TAG:?defina N8N_IMAGE_TAG no .env, ex. 2.35.7, e rode com --env-file .env}"
     env_file:
       - ../.env
     environment:
       - N8N_PORT=5678
-      - GENERIC_TIMEZONE=America/Sao_Paulo
-      - TZ=America/Sao_Paulo
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-America/Sao_Paulo}
+      - TZ=${TZ:-America/Sao_Paulo}
       - EXECUTIONS_DATA_SAVE_ON_ERROR=all
       - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
       - EXECUTIONS_DATA_PRUNE=true
       - EXECUTIONS_DATA_MAX_AGE=168
       - N8N_PAYLOAD_SIZE_MAX=16
+      - N8N_DIAGNOSTICS_ENABLED=false
     volumes:
       - ../n8n_data:/home/node/.n8n
       - ../local-files:/files
     restart: unless-stopped
     ports:
       - "5678:5678"
+    logging: *default-logging

@@ -18,3 +18,4 @@ n8n_data/
 local-files/
 .vscode/
 .idea/
+!.env.production.example

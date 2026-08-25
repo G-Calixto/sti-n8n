@@ -1,0 +1,53 @@
+# Override da Fase 2: coloca o Caddy na frente e liga HTTPS automatico.
+# Requer dois registros DNS A apontando para o IP da droplet:
+#   APP_DOMAIN  -> IP
+#   N8N_DOMAIN  -> IP
+#
+#   docker compose --env-file .env \
+#                  -f docker/docker-compose.prod.yml \
+#                  -f docker/docker-compose.tls.yml up -d --build
+#
+# Requer Docker Compose >= 2.24 (por causa do "!reset").
+
+services:
+  frontend:
+    # Quem passa a escutar 80/443 e o Caddy.
+    ports: !reset []
+
+  n8n:
+    # O n8n deixa de ficar exposto direto; passa a ser servido em N8N_DOMAIN.
+    ports: !reset []
+    environment:
+      - N8N_PROTOCOL=https
+      - N8N_SECURE_COOKIE=true
+      - N8N_HOST=${N8N_DOMAIN}
+      - WEBHOOK_URL=https://${N8N_DOMAIN}/
+      - N8N_EDITOR_BASE_URL=https://${N8N_DOMAIN}/
+      - N8N_PROXY_HOPS=1
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - APP_DOMAIN=${APP_DOMAIN}
+      - N8N_DOMAIN=${N8N_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+      - n8n
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  caddy_data:
+  caddy_config:
