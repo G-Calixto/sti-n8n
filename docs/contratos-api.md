@@ -133,8 +133,9 @@ O corpo agora é obrigatório (o questionário pedagógico viaja dentro dele —
   "questionario": {
     "tipo": "incorreta",
     "contexto_pedagogico": {
-      "momento_conteudo": "recente",
-      "estrategias_usadas": ["explicacao_direta"]
+      "momento_conteudo": "duas_a_quatro_semanas",
+      "profundidade_conteudo": "bem_trabalhado",
+      "estrategia_usada": "resolucao_em_grupo"
     },
     "perfil_emocional": {
       "reacao_ao_erro": "frustracao",

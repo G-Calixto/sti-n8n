@@ -387,22 +387,31 @@ confirme que a chave aparece preenchida. Se vier vazia ou der erro de
 descriptografia, a `N8N_ENCRYPTION_KEY` do `.env` não bate com a do
 `n8n_data/config` — corrija e reinicie o container.
 
-### 8.3 Ativar os workflows
+### 8.3 Publicar os workflows
 
 Este é o passo mais fácil de esquecer, e sem ele a aplicação inteira dá timeout.
-Os três workflows estão **inativos** hoje:
+
+**No n8n 2.x não existe mais o botão "Active".** Ele foi substituído por `Save` +
+`Publish` (canto superior direito do editor): `Save` guarda a edição sem tocar em
+produção, `Publish` é o que coloca o workflow no ar e registra o webhook em
+`/webhook/...`. Um workflow não publicado equivale ao antigo "inativo".
+
+Para conferir, abra o nó de Webhook: ele mostra `Test URL` e `Production URL` —
+a de produção é a que aparece no `.env`, e só responde depois do `Publish`.
+
+Os três workflows estão **não publicados** hoje:
 
 | Workflow | ID | Caminho do webhook | O que fazer |
 |---|---|---|---|
-| Extração - STI | `QWtOTfTYuSUwDPh2` | `extracao-otimizado` | **Ativar** — é o que o `.env` aponta |
-| Feedback | `k4c8eTmdip1OF4Jq` | `feedback-sti` | **Ativar** |
-| Extração - STI (duplicado) | `rFkliKSCW6svJ98P` | `extracao` | Deixar inativo, ou renomear para não confundir |
+| Extração - STI | `QWtOTfTYuSUwDPh2` | `extracao-otimizado` | **Publicar** — é o que o `.env` aponta |
+| Feedback | `k4c8eTmdip1OF4Jq` | `feedback-sti` | **Publicar** |
+| Extração - STI (duplicado) | `rFkliKSCW6svJ98P` | `extracao` | Deixar sem publicar, ou renomear para não confundir |
 
 Existem **duas** cópias do workflow de extração com nomes idênticos e caminhos
 diferentes. A versão em uso é a `extracao-otimizado`. Vale renomear a outra para
-`Extração - STI (antigo)` para ninguém ativar a errada por engano.
+`Extração - STI (antigo)` para ninguém publicar a errada por engano.
 
-Depois de ativar, confirme o caminho de produção:
+Depois de publicar, confirme o caminho de produção:
 
 ```bash
 curl -i -X POST http://localhost:5678/webhook/feedback-sti -H 'Content-Type: application/json' -d '{}'
@@ -434,20 +443,103 @@ Lembre que o backend guarda as submissões **em memória**. Reiniciar o containe
 
 ## 10. Atualizar a aplicação
 
-Depois do primeiro deploy, publicar uma mudança é isto:
+Este projeto tem **duas fontes de verdade separadas**, e cada uma se atualiza de
+um jeito. Confundir as duas é a causa mais comum de "eu mudei e não mudou nada".
+
+| O que você mudou | Onde isso vive | Como chega em produção |
+|---|---|---|
+| Backend, frontend, Dockerfiles, compose | Git | `git push` → `git pull` no servidor → `up -d --build` |
+| Variáveis de ambiente | `.env` no servidor (fora do Git) | editar o `.env` → `up -d` |
+| Workflows do n8n | `n8n_data/` dentro da Droplet | editar no editor de produção → `Publish` |
+
+### 10.1 Mudanças no código
+
+Na máquina local:
 
 ```bash
-ssh deploy@SEU_IP
+npm test
+git add .
+git commit -m "fix: descricao do que mudou"
+git push origin main
+```
+
+No servidor:
+
+```bash
 cd ~/sti-n8n
 git pull
 docker compose --env-file .env -f docker/docker-compose.prod.yml up -d --build
-docker image prune -f          # limpa imagens antigas, evita encher o disco
+docker image prune -f
 ```
 
-Mudou só o `.env`? `docker compose ... up -d` basta — **exceto** para
-`VITE_API_BASE_URL`, que é lido na hora do build e exige `--build`.
+O `up -d --build` reconstrói as imagens e troca os containers, recriando apenas
+os serviços que de fato mudaram. O `image prune` remove as imagens órfãs — sem
+ele o disco de 50 GB enche em alguns meses.
 
----
+Conte com alguns segundos de indisponibilidade na troca. E lembre que o backend
+guarda submissões **em memória**: se houver um professor no meio de um
+atendimento, ele perde a submissão em andamento.
+
+### 10.2 Mudanças só no `.env`
+
+`docker compose --env-file .env -f docker/docker-compose.prod.yml up -d` basta,
+porque as variáveis são lidas quando o container sobe.
+
+A exceção é **`VITE_API_BASE_URL`**, que é assada dentro do JavaScript durante o
+`vite build`. Mudou essa, precisa de `--build`.
+
+### 10.3 Mudanças nos workflows do n8n
+
+**Os workflows não estão no Git.** O estado real deles vive no
+`n8n_data/database.sqlite`, dentro da Droplet. Os arquivos em
+`n8n/workflows/*.json` são exports de referência — fotografias de um momento,
+não a fonte de verdade.
+
+Consequências práticas:
+
+- `git pull` **não** atualiza workflow nenhum.
+- Editar o n8n na máquina local não muda nada em produção.
+- Não existe sincronização automática entre os dois ambientes.
+
+Para alterar um workflow em produção, edite **direto no editor do servidor**. O
+modelo do n8n 2.x foi feito para isso: você edita e dá `Save` à vontade que
+produção continua rodando a última versão **publicada**. A mudança só entra no ar
+quando você clica em `Publish`. É um rascunho seguro dentro da própria instância
+de produção.
+
+Depois de publicar, exporte para versionar — isto é documentação, não deploy:
+
+1. No editor, menu `...` do workflow → `Download`
+2. Salve o `.json` em `n8n/workflows/` no repositório local
+3. `git commit` e `git push`
+
+### 10.4 Conferir se deu certo
+
+```bash
+docker compose --env-file .env -f docker/docker-compose.prod.yml ps
+curl -i http://localhost/api/health
+```
+
+Os três serviços `Up`, o `backend` como `Up (healthy)`, e o health respondendo
+`200`. No navegador, use **Ctrl+Shift+R**: o `index.html` é servido com
+`no-store`, mas o navegador às vezes insiste no cache.
+
+### 10.5 Voltar atrás
+
+Como o código está todo no Git, reverter é rápido:
+
+```bash
+cd ~/sti-n8n
+git log --oneline -5          # ache o commit que funcionava
+git checkout <hash>
+docker compose --env-file .env -f docker/docker-compose.prod.yml up -d --build
+```
+
+Para voltar ao normal depois: `git checkout main`.
+
+Se o problema foi num workflow do n8n, o caminho é outro: restaurar o backup do
+`n8n_data` (seção 12) ou usar o histórico de versões do próprio n8n 2.x, que
+guarda as publicações anteriores.
 
 ## 11. Fase 2 — domínio e HTTPS
 
@@ -485,28 +577,73 @@ docker compose --env-file .env \
 
 ## 12. Backup e manutenção
 
-O que é insubstituível é o `n8n_data/` (workflows, credenciais, execuções). O
-código está no GitHub e o `.env` você reconstrói — o `n8n_data` não.
+O que é insubstituível é o `n8n_data/`: o `database.sqlite` guarda os workflows e
+as credenciais (criptografadas) e o arquivo `config` guarda a chave que as
+descriptografa. O código está no GitHub e o `.env` você reconstrói — isso, não.
+
+### 12.1 O script
+
+O `n8n` fica rodando enquanto o backup acontece, então copiar o `database.sqlite`
+com um `cp` ou `tar` cru pode pegar o banco no meio de uma escrita e gerar uma
+cópia inconsistente. A forma correta é usar o comando `.backup` do próprio
+SQLite, que tira um retrato consistente de um banco vivo:
 
 ```bash
+sudo apt install -y sqlite3
 mkdir -p ~/backups
+
 cat > ~/backup-n8n.sh <<'EOF'
 #!/bin/bash
+set -e
 cd ~/sti-n8n
-tar -czf ~/backups/n8n_data-$(date +%F).tar.gz --exclude="*.log" n8n_data
+TMP=$(mktemp -d)
+sqlite3 n8n_data/database.sqlite ".backup '$TMP/database.sqlite'"
+cp n8n_data/config "$TMP/config"
+tar -czf ~/backups/n8n_data-$(date +%F).tar.gz -C "$TMP" database.sqlite config
+rm -rf "$TMP"
 find ~/backups -name 'n8n_data-*.tar.gz' -mtime +30 -delete
 EOF
+
 chmod +x ~/backup-n8n.sh
+~/backup-n8n.sh && ls -lh ~/backups/
 (crontab -l 2>/dev/null; echo "0 3 * * * /home/deploy/backup-n8n.sh") | crontab -
 ```
 
-Baixe uma cópia para fora da Droplet de vez em quando:
-`scp deploy@SEU_IP:~/backups/n8n_data-*.tar.gz .`
+Detalhes que importam:
 
-Ligue também os **Backups** da própria DigitalOcean (+20% do valor da Droplet) —
-eles cobrem o disco inteiro, não só o n8n.
+- As **aspas em `<<'EOF'`** impedem o shell de resolver o `$(date +%F)` na hora
+  de criar o script. Sem elas, todo backup nasceria com a data de hoje congelada
+  no nome.
+- `set -e` aborta no primeiro erro, em vez de seguir e gerar um `.tar.gz` vazio.
+- `cd ~/sti-n8n` é necessário porque o cron executa a partir da home.
+- `find ... -mtime +30 -delete` faz a rotação: sem isso, em um ano são 365
+  arquivos e disco cheio.
+- O script é executado **uma vez à mão** antes de entrar no cron, para você
+  confirmar que funciona antes de confiar nele.
+- `(crontab -l; echo ...) | crontab -` acrescenta a linha **preservando** o que
+  já existia. `0 3 * * *` é 3h da manhã em UTC — meia-noite em Brasília.
 
----
+### 12.2 Restaurar
+
+```bash
+cd ~/sti-n8n
+docker compose --env-file .env -f docker/docker-compose.prod.yml stop n8n
+tar -xzf ~/backups/n8n_data-AAAA-MM-DD.tar.gz -C n8n_data/
+sudo chown -R 1000:1000 n8n_data
+chmod 600 n8n_data/config
+docker compose --env-file .env -f docker/docker-compose.prod.yml start n8n
+```
+
+### 12.3 O ponto cego
+
+Esse backup mora **na mesma Droplet**. Se a máquina morrer, ele morre junto. Ele
+protege contra erro humano — alguém apagar um workflow, uma atualização dar
+errado. Não protege contra perder a máquina. Para isso:
+
+- Puxe uma cópia para fora periodicamente:
+  `scp deploy@SEU_IP:~/backups/n8n_data-*.tar.gz .`
+- Ligue os **Backups** da DigitalOcean (+20% do valor da Droplet), que fazem
+  imagem do disco inteiro fora da máquina.
 
 ## Troubleshooting
 
@@ -516,7 +653,7 @@ eles cobrem o disco inteiro, não só o n8n.
 | Chamadas indo para `localhost:3001` | `VITE_API_BASE_URL` errado no build | `VITE_API_BASE_URL=/` no `.env` e `up -d --build` |
 | `413 Request Entity Too Large` no upload | `client_max_body_size` do nginx | Já está em 20 MB no `docker/nginx.conf`; se aumentar `UPLOAD_MAX_SIZE_MB`, aumente aqui também |
 | `504` ou timeout na extração | Gemini demorou mais que o proxy aguenta | `proxy_read_timeout` no `nginx.conf` (180 s) e `N8N_TIMEOUT_MS` (120 s) |
-| Backend responde `404 not registered for POST` | Workflow desativado no n8n | Ativar o workflow (seção 8.3) |
+| Backend responde `404 not registered for POST` | Workflow não publicado no n8n | `Save` + `Publish` no editor (seção 8.3) |
 | n8n não sobe: "Mismatching encryption keys" | `N8N_ENCRYPTION_KEY` ≠ `n8n_data/config` | Copiar o valor exato do `config` para o `.env` |
 | Login do n8n falha com erro de cookie | HTTPS ausente + cookie seguro | `N8N_SECURE_COOKIE=false` no `.env` |
 | n8n reclama de permissão do `config` | Arquivo legível demais | `chmod 600 n8n_data/config` |

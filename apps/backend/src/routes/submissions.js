@@ -42,29 +42,71 @@ const extractionRevisionSchema = z.object({
   })
 });
 
+// Os valores abaixo espelham o questionario da ferramenta paliativa
+// (g-calixto/sti-prompt-tester). Mudar um enum aqui sem mudar la faz os
+// prompts dos dois ambientes divergirem.
 const questionarioCompletoSchema = z.object({
   tipo: z.enum(['correta', 'incorreta']),
   contexto_pedagogico: z.object({
-    momento_conteudo: z.enum(['recente', 'ja_trabalhado']),
-    estrategias_usadas: z.array(z.enum(['explicacao_direta', 'resolucao_em_grupo', 'atividade_pratica'])).min(1, 'Selecione ao menos uma estrategia.')
+    // CP1
+    momento_conteudo: z.enum(['nesta_semana', 'duas_a_quatro_semanas', 'neste_semestre', 'semestres_anteriores']),
+    // CP2
+    profundidade_conteudo: z.enum(['em_profundidade', 'bem_trabalhado', 'superficial', 'apenas_teorico']),
+    // CP3 — escolha unica, como na ferramenta
+    estrategia_usada: z.enum(['explicacao_direta', 'resolucao_em_grupo', 'resolucao_individual', 'atividade_pratica'])
   }),
   perfil_emocional: z.object({
+    // PEE1
     reacao_ao_erro: z.enum(['frustracao', 'indiferenca', 'busca_compreender', 'ansiedade', 'variavel']),
-    relacao_com_matematica: z.enum(['confianca', 'neutra', 'resistencia', 'ansiedade']),
+    // PEE2
+    relacao_com_matematica: z.enum(['confianca', 'interesse', 'desinteresse', 'resistencia', 'ansiedade_bloqueio']),
+    // PEE3
     receptividade_feedback: z.enum(['boa', 'depende_da_abordagem', 'tende_a_resistir'])
   }),
   caso_correto: z.object({
+    // DSP1 do caso correto
     acerto_esperado: z.enum(['sim_esperado', 'sim_com_dificuldade_usual', 'nao_surpresa_positiva'])
   }).nullable(),
   caso_incorreto: z.object({
-    desempenho_geral: z.enum(['abaixo_da_media', 'mediano', 'acima_da_media']),
-    frequencia_erro: z.enum(['frequente', 'as_vezes', 'primeira_vez']),
+    // DSP1, DSP2 e DSP3 do caso incorreto
+    desempenho_geral: z.enum(['abaixo_da_media', 'na_media', 'acima_da_media']),
+    frequencia_erro: z.enum(['primeira_vez', 'as_vezes', 'quase_sempre']),
     natureza_erro: z.enum(['compreensao_conceito', 'distracao', 'interpretacao_enunciado', 'calculo_execucao'])
   }).nullable()
 });
 
-// Vazio ({}) e aceito para o caso de regeneracao, que reaproveita o questionario ja salvo.
-const questionarioSchema = z.union([z.object({}).strict(), questionarioCompletoSchema]);
+// Vazio ({}) e aceito para o caso de regeneracao, que reaproveita o questionario
+// ja salvo. Um z.union aqui engolia os caminhos dos campos e devolvia um erro
+// generico de "questionario invalido", sem dizer qual resposta estava errada.
+// Validando em duas etapas, a mensagem aponta o campo exato.
+const questionarioSchema = z
+  .unknown()
+  .superRefine((valor, ctx) => {
+    if (valor === undefined || valor === null) return;
+    if (typeof valor !== 'object' || Array.isArray(valor)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'O questionario deve ser um objeto.' });
+      return;
+    }
+    if (Object.keys(valor).length === 0) return;
+
+    const resultado = questionarioCompletoSchema.safeParse(valor);
+    if (resultado.success) return;
+
+    for (const issue of resultado.error.issues) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: issue.path,
+        message:
+          issue.code === 'invalid_enum_value'
+            ? `Valor "${issue.received}" nao e uma opcao valida. Opcoes: ${(issue.options || []).join(', ')}.`
+            : issue.message
+      });
+    }
+  })
+  .transform((valor) => {
+    if (!valor || Object.keys(valor).length === 0) return {};
+    return questionarioCompletoSchema.parse(valor);
+  });
 
 const feedbackRequestSchema = z.object({
   questionario: questionarioSchema.optional().default({}),

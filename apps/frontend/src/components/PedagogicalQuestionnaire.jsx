@@ -1,222 +1,210 @@
-import { useState } from 'react';
+import { EscolhaUnica, Origem, SecaoQuestionario } from './ui';
 
-function RadioGroup({ label, name, value, onChange, options }) {
-  return (
-    <fieldset className="option-group">
-      <legend>{label}</legend>
-      {options.map((option) => (
-        <label key={option.value} className="option-row">
-          <input
-            type="radio"
-            name={name}
-            value={option.value}
-            checked={value === option.value}
-            onChange={() => onChange(option.value)}
-          />
-          {option.label}
-        </label>
-      ))}
-    </fieldset>
-  );
-}
+// Perguntas, ordem e rotulos espelhados da ferramenta paliativa
+// (g-calixto/sti-prompt-tester). Os slugs correspondem as letras A..E de la,
+// na mesma ordem. Mudar aqui sem mudar la faz os prompts divergirem.
+const OPCOES = {
+  // CP1
+  momento: [
+    { value: 'nesta_semana', label: 'Nesta semana' },
+    { value: 'duas_a_quatro_semanas', label: 'De 2 a 4 semanas' },
+    { value: 'neste_semestre', label: 'Neste semestre (há mais de um mês)' },
+    { value: 'semestres_anteriores', label: 'Em semestres anteriores' }
+  ],
+  // CP2
+  profundidade: [
+    { value: 'em_profundidade', label: 'Foi trabalhado em profundidade, com prática extensiva e aplicação em diferentes contextos' },
+    { value: 'bem_trabalhado', label: 'Foi bem trabalhado, com prática relevante' },
+    { value: 'superficial', label: 'Foi trabalhado de forma superficial, com pouca prática' },
+    { value: 'apenas_teorico', label: 'Foi apenas apresentado teoricamente, sem prática associada' }
+  ],
+  // CP3
+  estrategia: [
+    { value: 'explicacao_direta', label: 'Exposição direta (explicação, lousa)' },
+    { value: 'resolucao_em_grupo', label: 'Resolução de problemas em grupo' },
+    { value: 'resolucao_individual', label: 'Resolução de problemas individualmente' },
+    { value: 'atividade_pratica', label: 'Atividade prática ou experimental' }
+  ],
+  // DSP1 do caso correto
+  acertoEsperado: [
+    { value: 'sim_esperado', label: 'Sim, é o esperado para ele' },
+    { value: 'sim_com_dificuldade_usual', label: 'Sim, mas ele costuma ter dificuldade' },
+    { value: 'nao_surpresa_positiva', label: 'Não, foi uma surpresa positiva' }
+  ],
+  // DSP1 do caso incorreto
+  desempenho: [
+    { value: 'abaixo_da_media', label: 'Abaixo da média' },
+    { value: 'na_media', label: 'Na média' },
+    { value: 'acima_da_media', label: 'Acima da média' }
+  ],
+  // DSP2
+  frequencia: [
+    { value: 'primeira_vez', label: 'Foi a primeira vez' },
+    { value: 'as_vezes', label: 'Às vezes ou algumas vezes' },
+    { value: 'quase_sempre', label: 'Quase sempre' }
+  ],
+  // DSP3
+  natureza: [
+    { value: 'compreensao_conceito', label: 'Compreensão do conceito' },
+    { value: 'distracao', label: 'Distração' },
+    { value: 'interpretacao_enunciado', label: 'Interpretação do enunciado' },
+    { value: 'calculo_execucao', label: 'Cálculo ou execução' }
+  ],
+  // PEE1
+  reacao: [
+    { value: 'frustracao', label: 'Fica frustrado' },
+    { value: 'indiferenca', label: 'Fica indiferente' },
+    { value: 'busca_compreender', label: 'Quer entender o erro' },
+    { value: 'ansiedade', label: 'Fica ansioso' },
+    { value: 'variavel', label: 'Varia muito' }
+  ],
+  // PEE2
+  relacao: [
+    { value: 'confianca', label: 'Demonstra confiança' },
+    { value: 'interesse', label: 'Demonstra interesse' },
+    { value: 'desinteresse', label: 'Demonstra desinteresse' },
+    { value: 'resistencia', label: 'Demonstra resistência' },
+    { value: 'ansiedade_bloqueio', label: 'Demonstra ansiedade ou bloqueio' }
+  ],
+  // PEE3
+  receptividade: [
+    { value: 'boa', label: 'Recebe bem' },
+    { value: 'depende_da_abordagem', label: 'Depende de como é dado' },
+    { value: 'tende_a_resistir', label: 'Tende a resistir' }
+  ]
+};
 
-function CheckboxGroup({ label, values, onToggle, options }) {
-  return (
-    <fieldset className="option-group">
-      <legend>{label}</legend>
-      {options.map((option) => (
-        <label key={option.value} className="option-row">
-          <input
-            type="checkbox"
-            checked={values.includes(option.value)}
-            onChange={() => onToggle(option.value)}
-          />
-          {option.label}
-        </label>
-      ))}
-    </fieldset>
-  );
-}
+// Componente controlado: as respostas vivem no App, nao aqui. Se ficassem aqui,
+// um erro na geracao do feedback remontaria o componente e apagaria tudo.
+export default function PedagogicalQuestionnaire({
+  tipo,
+  valores,
+  onResposta,
+  intencaoProfessor,
+  onIntencaoProfessor,
+  onSubmit,
+  isSubmitting
+}) {
+  const correta = tipo === 'correta';
+  const r = valores || {};
 
-export default function PedagogicalQuestionnaire({ tipo, onSubmit, isSubmitting }) {
-  const [momentoConteudo, setMomentoConteudo] = useState('');
-  const [estrategiasUsadas, setEstrategiasUsadas] = useState([]);
-  const [reacaoAoErro, setReacaoAoErro] = useState('');
-  const [relacaoComMatematica, setRelacaoComMatematica] = useState('');
-  const [receptividadeFeedback, setReceptividadeFeedback] = useState('');
-  const [acertoEsperado, setAcertoEsperado] = useState('');
-  const [desempenhoGeral, setDesempenhoGeral] = useState('');
-  const [frequenciaErro, setFrequenciaErro] = useState('');
-  const [naturezaErro, setNaturezaErro] = useState('');
-  const [intencaoProfessor, setIntencaoProfessor] = useState('');
+  const obrigatorias = correta
+    ? ['momento_conteudo', 'profundidade_conteudo', 'estrategia_usada', 'acerto_esperado',
+       'reacao_ao_erro', 'relacao_com_matematica', 'receptividade_feedback']
+    : ['momento_conteudo', 'profundidade_conteudo', 'estrategia_usada', 'desempenho_geral',
+       'frequencia_erro', 'natureza_erro', 'reacao_ao_erro', 'relacao_com_matematica',
+       'receptividade_feedback'];
 
-  function toggleEstrategia(value) {
-    setEstrategiasUsadas((current) =>
-      current.includes(value) ? current.filter((item) => item !== value) : [...current, value]
-    );
-  }
-
-  const contextoPreenchido = Boolean(momentoConteudo) && estrategiasUsadas.length > 0;
-  const perfilPreenchido = Boolean(reacaoAoErro && relacaoComMatematica && receptividadeFeedback);
-  const casoPreenchido = tipo === 'correta'
-    ? Boolean(acertoEsperado)
-    : Boolean(desempenhoGeral && frequenciaErro && naturezaErro);
-  const podeGerar = contextoPreenchido && perfilPreenchido && casoPreenchido;
+  const faltando = obrigatorias.filter((campo) => !r[campo]).length;
+  const pronto = faltando === 0;
 
   function handleSubmit(event) {
     event.preventDefault();
-    if (!podeGerar) return;
+    if (!pronto || isSubmitting) return;
 
     const questionario = {
       tipo,
       contexto_pedagogico: {
-        momento_conteudo: momentoConteudo,
-        estrategias_usadas: estrategiasUsadas
+        momento_conteudo: r.momento_conteudo,
+        profundidade_conteudo: r.profundidade_conteudo,
+        estrategia_usada: r.estrategia_usada
       },
       perfil_emocional: {
-        reacao_ao_erro: reacaoAoErro,
-        relacao_com_matematica: relacaoComMatematica,
-        receptividade_feedback: receptividadeFeedback
+        reacao_ao_erro: r.reacao_ao_erro,
+        relacao_com_matematica: r.relacao_com_matematica,
+        receptividade_feedback: r.receptividade_feedback
       },
-      caso_correto: tipo === 'correta' ? { acerto_esperado: acertoEsperado } : null,
-      caso_incorreto: tipo === 'incorreta'
-        ? { desempenho_geral: desempenhoGeral, frequencia_erro: frequenciaErro, natureza_erro: naturezaErro }
-        : null
+      caso_correto: correta ? { acerto_esperado: r.acerto_esperado } : null,
+      caso_incorreto: correta
+        ? null
+        : {
+            desempenho_geral: r.desempenho_geral,
+            frequencia_erro: r.frequencia_erro,
+            natureza_erro: r.natureza_erro
+          }
     };
 
-    onSubmit(questionario, intencaoProfessor);
+    onSubmit(questionario, intencaoProfessor || '');
   }
 
+  const pergunta = (campo, titulo, opcoes, direcao) => (
+    <EscolhaUnica
+      titulo={titulo}
+      nome={campo}
+      valor={r[campo] || ''}
+      onChange={(valor) => onResposta(campo, valor)}
+      opcoes={opcoes}
+      direcao={direcao}
+    />
+  );
+
   return (
-    <form className="stack" onSubmit={handleSubmit}>
-      <h2>Questionário pedagógico</h2>
+    <form className="cartao" onSubmit={handleSubmit} style={{ gap: '24px' }}>
+      <Origem tipo="professor">Informado pelo professor</Origem>
 
-      <RadioGroup
-        label="Quando este conteúdo foi trabalhado em aula?"
-        name="momento_conteudo"
-        value={momentoConteudo}
-        onChange={setMomentoConteudo}
-        options={[
-          { value: 'recente', label: 'Foi visto recentemente' },
-          { value: 'ja_trabalhado', label: 'Já foi bastante trabalhado' }
-        ]}
-      />
+      <p className="nota" style={{ margin: 0 }}>
+        As perguntas marcadas com <span className="obrigatorio">*</span> são obrigatórias. Apenas o campo
+        final é opcional.
+      </p>
 
-      <CheckboxGroup
-        label="Como esse conteúdo foi trabalhado em aula?"
-        values={estrategiasUsadas}
-        onToggle={toggleEstrategia}
-        options={[
-          { value: 'explicacao_direta', label: 'Exposição direta explicação/lousa' },
-          { value: 'resolucao_em_grupo', label: 'Resolução de problemas em grupo' },
-          { value: 'atividade_pratica', label: 'Atividade prática/experimental' }
-        ]}
-      />
+      <SecaoQuestionario titulo="Contexto pedagógico">
+        {pergunta('momento_conteudo', 'Quando este conteúdo foi trabalhado?', OPCOES.momento)}
+        {pergunta('profundidade_conteudo', 'O quanto este conteúdo foi trabalhado?', OPCOES.profundidade, 'column')}
+        {pergunta('estrategia_usada', 'Como este conteúdo foi trabalhado em aula?', OPCOES.estrategia, 'column')}
+      </SecaoQuestionario>
 
-      {tipo === 'correta' ? (
-        <RadioGroup
-          label="O acerto foi esperado para esse aluno?"
-          name="acerto_esperado"
-          value={acertoEsperado}
-          onChange={setAcertoEsperado}
-          options={[
-            { value: 'sim_esperado', label: 'Sim, é o esperado para ele' },
-            { value: 'sim_com_dificuldade_usual', label: 'Sim, mas ele costuma ter dificuldade' },
-            { value: 'nao_surpresa_positiva', label: 'Não, foi uma surpresa positiva' }
-          ]}
-        />
-      ) : (
-        <>
-          <RadioGroup
-            label="Como é o desempenho geral desse aluno em matemática?"
-            name="desempenho_geral"
-            value={desempenhoGeral}
-            onChange={setDesempenhoGeral}
-            options={[
-              { value: 'abaixo_da_media', label: 'Abaixo da média' },
-              { value: 'mediano', label: 'Na média' },
-              { value: 'acima_da_media', label: 'Acima da média' }
-            ]}
+      <SecaoQuestionario titulo="Desempenho">
+        {correta ? (
+          pergunta('acerto_esperado', 'O acerto foi esperado para esse aluno?', OPCOES.acertoEsperado, 'column')
+        ) : (
+          <>
+            {pergunta('desempenho_geral', 'Como é o desempenho geral desse aluno em matemática?', OPCOES.desempenho)}
+            {pergunta('frequencia_erro', 'Com que frequência o aluno comete este erro?', OPCOES.frequencia)}
+            {pergunta('natureza_erro', 'O erro parece ser de:', OPCOES.natureza, 'column')}
+          </>
+        )}
+      </SecaoQuestionario>
+
+      <SecaoQuestionario titulo="Perfil emocional estável">
+        {pergunta('reacao_ao_erro', 'Como esse aluno costuma reagir quando erra?', OPCOES.reacao)}
+        {pergunta('relacao_com_matematica', 'Como é a relação desse aluno com matemática?', OPCOES.relacao)}
+        {pergunta('receptividade_feedback', 'Como esse aluno recebe o feedback do professor?', OPCOES.receptividade)}
+      </SecaoQuestionario>
+
+      <SecaoQuestionario titulo="Intenção do professor">
+        <div className="campo">
+          <label className="campo__rotulo" htmlFor="intencao_professor">
+            Tem algo importante sobre esse aluno que devo considerar?{' '}
+            <span className="nota">(opcional)</span>
+          </label>
+          <textarea
+            id="intencao_professor"
+            className="area"
+            rows={3}
+            maxLength={300}
+            style={{ maxWidth: '720px' }}
+            placeholder="Digite aqui"
+            value={intencaoProfessor || ''}
+            onChange={(event) => onIntencaoProfessor(event.target.value)}
           />
-          <RadioGroup
-            label="Esse tipo de erro é frequente para ele?"
-            name="frequencia_erro"
-            value={frequenciaErro}
-            onChange={setFrequenciaErro}
-            options={[
-              { value: 'frequente', label: 'Sim' },
-              { value: 'as_vezes', label: 'Às vezes' },
-              { value: 'primeira_vez', label: 'É a primeira vez' }
-            ]}
-          />
-          <RadioGroup
-            label="O erro parece ser de:"
-            name="natureza_erro"
-            value={naturezaErro}
-            onChange={setNaturezaErro}
-            options={[
-              { value: 'compreensao_conceito', label: 'Compreensão do conceito' },
-              { value: 'distracao', label: 'Distração' },
-              { value: 'interpretacao_enunciado', label: 'Interpretação do enunciado' },
-              { value: 'calculo_execucao', label: 'Cálculo/execução' }
-            ]}
-          />
-        </>
-      )}
+          <span className="nota">
+            Campo opcional. Escreva no máximo 1 ou 2 frases. {(intencaoProfessor || '').length}/300
+          </span>
+        </div>
+      </SecaoQuestionario>
 
-      <RadioGroup
-        label="Como esse aluno costuma reagir quando erra?"
-        name="reacao_ao_erro"
-        value={reacaoAoErro}
-        onChange={setReacaoAoErro}
-        options={[
-          { value: 'frustracao', label: 'Fica frustrado' },
-          { value: 'indiferenca', label: 'Fica indiferente' },
-          { value: 'busca_compreender', label: 'Quer entender o erro' },
-          { value: 'ansiedade', label: 'Fica ansioso' },
-          { value: 'variavel', label: 'Varia muito' }
-        ]}
-      />
+      <hr className="regua" />
 
-      <RadioGroup
-        label="Como é a relação desse aluno com matemática?"
-        name="relacao_com_matematica"
-        value={relacaoComMatematica}
-        onChange={setRelacaoComMatematica}
-        options={[
-          { value: 'confianca', label: 'Tem confiança' },
-          { value: 'neutra', label: 'É neutro' },
-          { value: 'resistencia', label: 'Tem resistência' },
-          { value: 'ansiedade', label: 'Demonstra ansiedade' }
-        ]}
-      />
-
-      <RadioGroup
-        label="Esse aluno costuma receber bem o feedback do professor?"
-        name="receptividade_feedback"
-        value={receptividadeFeedback}
-        onChange={setReceptividadeFeedback}
-        options={[
-          { value: 'boa', label: 'Sim, acolhe bem' },
-          { value: 'depende_da_abordagem', label: 'Depende de como é dado' },
-          { value: 'tende_a_resistir', label: 'Tende a resistir' }
-        ]}
-      />
-
-      <label>
-        Intenção do professor (opcional)
-        <textarea
-          rows={3}
-          maxLength={1000}
-          value={intencaoProfessor}
-          onChange={(event) => setIntencaoProfessor(event.target.value)}
-          placeholder="Tem algo importante sobre esse aluno que devo considerar?"
-        />
-      </label>
-
-      <button type="submit" disabled={!podeGerar || isSubmitting}>
-        Gerar feedback
-      </button>
+      <div className="acoes">
+        <button type="submit" className="btn btn--primario" disabled={!pronto || isSubmitting}>
+          {isSubmitting ? 'Gerando feedback...' : 'Gerar feedback'}
+        </button>
+        <span className="nota">
+          {pronto
+            ? 'Todas as perguntas respondidas.'
+            : `${faltando} ${faltando === 1 ? 'pergunta ainda sem resposta' : 'perguntas ainda sem resposta'}`}
+        </span>
+      </div>
     </form>
   );
 }

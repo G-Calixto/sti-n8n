@@ -44,7 +44,7 @@ O corpo consolida a extração revisada, a avaliação oficial calculada pelo ba
   "avaliacao": { "status": "incorreta", "resposta_correta": false },
   "questionario": {
     "tipo": "correta | incorreta",
-    "contexto_pedagogico": { "momento_conteudo": "recente|ja_trabalhado", "estrategias_usadas": ["explicacao_direta"] },
+    "contexto_pedagogico": { "momento_conteudo": "<CP1>", "profundidade_conteudo": "<CP2>", "estrategia_usada": "<CP3>" },
     "perfil_emocional": { "reacao_ao_erro": "frustracao", "relacao_com_matematica": "resistencia", "receptividade_feedback": "depende_da_abordagem" },
     "caso_correto": null,
     "caso_incorreto": { "desempenho_geral": "mediano", "frequencia_erro": "as_vezes", "natureza_erro": "calculo_execucao" }
@@ -102,7 +102,7 @@ Quando `regeneracao.solicitada` é `true`, o node `Preparar dados` anexa ao prom
 
 O node "Append row in sheet" grava, além dos campos de extração e avaliação, o questionário pedagógico, a intenção do professor, os dados de regeneração e o prompt exato enviado ao Gemini (`prompt_feedback`) — útil para análise desta pesquisa. O `columns.value` do node já vem preenchido com o mapeamento `{{ $json.<campo> }} ` para cada coluna do `schema`; se novas colunas forem adicionadas no futuro, o mapeamento precisa ser estendido do mesmo jeito (mapear por nome, não por posição).
 
-Colunas novas em relação à versão anterior: `feedback_generation`, `status_avaliacao_oficial`, `resposta_correta`, `tipo_prompt`, `entrada_valida`, `questionario_tipo`, `momento_conteudo`, `estrategias_usadas`, `reacao_ao_erro`, `relacao_com_matematica`, `receptividade_feedback`, `acerto_esperado`, `desempenho_geral`, `frequencia_erro`, `natureza_erro`, `intencao_professor`, `regeneracao_solicitada`, `regeneracao_instrucao`, `prompt_feedback`.
+Colunas novas em relação à versão anterior: `feedback_generation`, `status_avaliacao_oficial`, `resposta_correta`, `tipo_prompt`, `entrada_valida`, `questionario_tipo`, `momento_conteudo`, `profundidade_conteudo`, `estrategia_usada`, `reacao_ao_erro`, `relacao_com_matematica`, `receptividade_feedback`, `acerto_esperado`, `desempenho_geral`, `frequencia_erro`, `natureza_erro`, `intencao_professor`, `regeneracao_solicitada`, `regeneracao_instrucao`, `prompt_feedback`.
 
 O node roda **depois** de "Respond to Webhook" (`Tratar resposta da IA -> Respond to Webhook -> Append row in sheet`), não antes — a resposta ao backend nunca fica esperando o Sheets nem é afetada por uma falha nele. Tem também `retryOnFail: true` e `onError: "continueErrorOutput"` como reforço extra.
 

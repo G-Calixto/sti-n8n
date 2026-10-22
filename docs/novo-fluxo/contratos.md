@@ -91,8 +91,9 @@ Não é uma rota própria — o questionário viaja dentro do body de `POST /api
 {
   "tipo": "correta | incorreta",
   "contexto_pedagogico": {
-    "momento_conteudo": "recente | ja_trabalhado",
-    "estrategias_usadas": ["explicacao_direta", "resolucao_em_grupo", "atividade_pratica"]
+    "momento_conteudo": "nesta_semana | duas_a_quatro_semanas | neste_semestre | semestres_anteriores",
+    "profundidade_conteudo": "em_profundidade | bem_trabalhado | superficial | apenas_teorico",
+    "estrategia_usada": "explicacao_direta | resolucao_em_grupo | resolucao_individual | atividade_pratica"
   },
   "perfil_emocional": {
     "reacao_ao_erro": "frustracao | indiferenca | busca_compreender | ansiedade | variavel",
@@ -119,7 +120,8 @@ Os prompts em `docs/prompts/feedback-resposta-correta.md` e `feedback-resposta-i
 
 | Conceito | Placeholder no prompt | JSON do MVP | JSON do PLANO (só referência) | **Nome canônico (este doc)** |
 |---|---|---|---|---|
-| Quando o conteúdo foi trabalhado | `{{quando_conteudo_foi_trabalhado}}` | `momento_conteudo` | `content_timing` | **`momento_conteudo`** |
+| Quando o conteúdo foi trabalhado | `{{quando_conteudo_trabalhado}}` | `momento_conteudo` | `content_timing` | **`momento_conteudo`** |
+| Com que profundidade foi trabalhado | `{{profundidade_conteudo}}` | `profundidade_conteudo` | — | **`profundidade_conteudo`** |
 | Como o conteúdo foi trabalhado | `{{como_conteudo_foi_trabalhado}}` | `estrategias_usadas` | `teaching_strategies` | **`estrategias_usadas`** |
 | Expectativa de acerto (caso correto) | `{{expectativa_do_acerto}}` | `acerto_esperado` | `success_expectation` | **`acerto_esperado`** |
 | Desempenho geral (caso incorreto) | `{{desempenho_geral_matematica}}` | `desempenho_geral` | `general_performance` | **`desempenho_geral`** |
@@ -138,7 +140,16 @@ As opções abaixo vêm do texto real em `novo-fluxo-usuario.md` (única fonte c
 
 | Campo | Opções (texto original → slug proposto) |
 |---|---|
-| `momento_conteudo` | "Foi visto recentemente" → `recente` · "Já foi bastante trabalhado" → `ja_trabalhado` |
+| `momento_conteudo` (CP1) | `nesta_semana` · `duas_a_quatro_semanas` · `neste_semestre` · `semestres_anteriores` |
+| `profundidade_conteudo` (CP2) | `em_profundidade` · `bem_trabalhado` · `superficial` · `apenas_teorico` |
+| `estrategia_usada` (CP3, escolha única) | `explicacao_direta` · `resolucao_em_grupo` · `resolucao_individual` · `atividade_pratica` |
+| `desempenho_geral` (DSP1) | `abaixo_da_media` · `na_media` · `acima_da_media` |
+| `frequencia_erro` (DSP2) | `primeira_vez` · `as_vezes` · `quase_sempre` |
+| `relacao_com_matematica` (PEE2) | `confianca` · `interesse` · `desinteresse` · `resistencia` · `ansiedade_bloqueio` |
+
+> Os valores acima espelham o questionário da ferramenta paliativa
+> (`g-calixto/sti-prompt-tester`). Mudar um enum aqui sem mudar lá faz os
+> prompts dos dois ambientes divergirem.
 | `estrategias_usadas` (múltipla escolha) | "Exposição direta explicação/lousa" → `explicacao_direta` · "resolução de problemas em grupo" → `resolucao_em_grupo` · "atividade prática/experimental" → `atividade_pratica` |
 | `acerto_esperado` (só se `tipo: correta`) | "sim, é o esperado para ele" → `sim_esperado` · "sim, mas ele costuma ter dificuldade" → `sim_com_dificuldade_usual` · "não, foi uma surpresa positiva" → `nao_surpresa_positiva` |
 | `desempenho_geral` (só se `tipo: incorreta`) | "Abaixo da média" → `abaixo_da_media` · "Na média" → `mediano` · "Acima da média" → `acima_da_media` |
@@ -165,8 +176,9 @@ Frontend → backend:
   "questionario": {
     "tipo": "incorreta",
     "contexto_pedagogico": {
-      "momento_conteudo": "recente",
-      "estrategias_usadas": ["explicacao_direta"]
+      "momento_conteudo": "duas_a_quatro_semanas",
+      "profundidade_conteudo": "bem_trabalhado",
+      "estrategia_usada": "resolucao_em_grupo"
     },
     "perfil_emocional": {
       "reacao_ao_erro": "frustracao",

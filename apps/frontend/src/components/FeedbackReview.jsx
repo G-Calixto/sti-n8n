@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Aviso, Origem } from './ui';
 
 export default function FeedbackReview({
   feedbackAluno,
@@ -7,60 +8,131 @@ export default function FeedbackReview({
   isSubmitting,
   onChange,
   onAprovar,
-  onPedirNovaVersao
+  onPedirNovaVersao,
+  onReiniciar
 }) {
-  const [instrucaoRegeneracao, setInstrucaoRegeneracao] = useState('');
+  const [pedindoNovaVersao, setPedindoNovaVersao] = useState(false);
+  const [instrucao, setInstrucao] = useState('');
+  const versao = feedbackGeneration || 1;
+
+  function solicitarNovaVersao() {
+    onPedirNovaVersao(instrucao);
+    setPedindoNovaVersao(false);
+    setInstrucao('');
+  }
+
+  if (aprovado) {
+    return (
+      <>
+        <Aviso
+          tipo="acerto"
+          titulo="Feedback aprovado"
+          texto="O texto aprovado por você foi registrado para esta submissão."
+        />
+        <div className="cartao">
+          <div className="origem-linha">
+            <Origem tipo="professor">Decisão do professor</Origem>
+            <span className="nota">Versão {versao}, aprovada</span>
+          </div>
+          <div className="texto-registrado">{feedbackAluno}</div>
+          <span className="nota">Somente leitura. Este é o texto registrado.</span>
+        </div>
+        <div className="acoes">
+          <button type="button" className="btn btn--contorno" onClick={onReiniciar}>
+            Corrigir outra questão
+          </button>
+        </div>
+      </>
+    );
+  }
 
   return (
-    <div className="stack">
-      <h2>Feedback pedagógico</h2>
-      <p className="muted">Versão {feedbackGeneration || 1}</p>
+    <>
+      <div>
+        <h2 className="h2">Revise o feedback antes de aprovar</h2>
+        <p className="apoio" style={{ marginTop: '6px' }}>
+          Você pode editar diretamente no campo abaixo.
+        </p>
+      </div>
 
-      <label>
-        Feedback para o aluno
+      <div className="cartao">
+        <div className="origem-linha">
+          <Origem tipo="ia">Redigido pela IA</Origem>
+          <span className="nota">Versão {versao}</span>
+        </div>
         <textarea
-          rows={6}
+          className="area area--feedback"
+          rows={9}
           value={feedbackAluno}
+          disabled={isSubmitting}
           onChange={(event) => onChange(event.target.value)}
-          disabled={isSubmitting || aprovado}
         />
-      </label>
+      </div>
 
-      {aprovado ? (
-        <p className="approved-note">Feedback aprovado.</p>
-      ) : (
-        <>
-          <div className="button-row">
+      {pedindoNovaVersao ? (
+        <div className="cartao">
+          <Origem tipo="professor">Decisão do professor</Origem>
+          <div className="campo">
+            <label className="campo__rotulo" htmlFor="instrucao_regeneracao">
+              O que ajustar no texto
+            </label>
+            <textarea
+              id="instrucao_regeneracao"
+              className="area entrada--editada"
+              rows={3}
+              maxLength={500}
+              value={instrucao}
+              onChange={(event) => setInstrucao(event.target.value)}
+            />
+            <span className="nota">
+              Diga o que ajustar. Por exemplo: mais curto, com uma pergunta que oriente o próximo passo.
+            </span>
+          </div>
+          <div className="acoes">
             <button
               type="button"
-              onClick={() => onAprovar(feedbackAluno)}
-              disabled={isSubmitting || !feedbackAluno.trim()}
+              className="btn btn--primario"
+              onClick={solicitarNovaVersao}
+              disabled={isSubmitting}
             >
-              Aprovar
+              Gerar nova versão
+            </button>
+            <button
+              type="button"
+              className="btn btn--texto"
+              onClick={() => setPedindoNovaVersao(false)}
+              disabled={isSubmitting}
+            >
+              Cancelar
             </button>
           </div>
-
-          <label>
-            Instrução para nova versão (opcional)
-            <textarea
-              rows={2}
-              value={instrucaoRegeneracao}
-              onChange={(event) => setInstrucaoRegeneracao(event.target.value)}
-              placeholder="Ex.: criar uma versão mais curta e com uma pergunta orientadora"
-            />
-          </label>
-          <div className="button-row">
+        </div>
+      ) : (
+        <div className="cartao">
+          <Origem tipo="professor">Decisão do professor</Origem>
+          <div className="acoes">
             <button
               type="button"
-              className="secondary-button"
-              onClick={() => onPedirNovaVersao(instrucaoRegeneracao)}
+              className="btn btn--primario"
+              onClick={() => onAprovar(feedbackAluno)}
+              disabled={isSubmitting || !String(feedbackAluno || '').trim()}
+            >
+              {isSubmitting ? 'Registrando...' : 'Aprovar feedback'}
+            </button>
+            <button
+              type="button"
+              className="btn btn--contorno"
+              onClick={() => setPedindoNovaVersao(true)}
               disabled={isSubmitting}
             >
               Pedir nova versão
             </button>
           </div>
-        </>
+          <span className="nota">
+            O que fica registrado é o texto que você aprovar, com ou sem suas edições.
+          </span>
+        </div>
       )}
-    </div>
+    </>
   );
 }
